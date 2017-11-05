@@ -3,9 +3,9 @@
 [![Discord Server](https://i.imgur.com/mlWIObp.png)](https://discord.gg/D6qd4BE)
 
 DaddyBot is Discord administrative, interactive and fun bot!
-Library: Discord.NET [C#]\n
-Version: 1.0.2.\n
-.NET Core version: 2.0.0.\n
+Library: Discord.NET [C#]  
+Version: 1.0.2.  
+.NET Core version: 2.0.0.  
 
 # Features
   - Custom server prefix
