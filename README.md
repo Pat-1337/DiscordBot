@@ -1,0 +1,2 @@
+# DaddyBot
+Discord.NET bot
