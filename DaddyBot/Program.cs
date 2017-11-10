@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
@@ -60,7 +60,7 @@ namespace Daddy.Main
             await InstallCommands();
             ConfigureEventHandlers();
             CancellationTokenSource tokenSource = new CancellationTokenSource();
-            Task timerTask = RunPeriodically(_game, TimeSpan.FromSeconds(60), tokenSource.Token);
+            Task timerTask = RunPeriodically(_game, TimeSpan.FromSeconds(25), tokenSource.Token);
 
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
@@ -96,11 +96,12 @@ namespace Daddy.Main
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Screw Albania");
             }
-            /*else if (HasConsecutiveChars(message.Content, Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.CharSpam))) && !Modules.BaseCommands.isVip(message.Author))
+            else if (!Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.CharSpam)).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.CharSpam))) && !Modules.BaseCommands.isVip(message.Author))
             {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }
+            /*
             else if (HasConsecutiveWords(message.Content, Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.WordSpam))) && !Modules.BaseCommands.isVip(message.Author))
             {
                 await message.DeleteAsync();
@@ -155,15 +156,16 @@ namespace Daddy.Main
         {
             EmbedBuilder builder = new EmbedBuilder();
             EmbedAuthorBuilder author = new EmbedAuthorBuilder();
-            Database.JSON jSon = new Database.JSON();
             switch (j)
             {
                 case JoinSeverity.UserJoined:
-                    if (jSon.checkPermChn(guild as IGuild, guild.DefaultChannel.Id, Modules.BaseCommands.Commands.Welcome))
+                    if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Welcome) && !user.IsBot)
                     {
-                        author.Name = $"{user.Username} joined the {user.Guild.Name} family!";
-                        builder.Description = $"Thanks for Joining!\nEveryone welcome {user.Username}!\n\n{jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Welcome)}";
-                        //builder.WithImageUrl("http://i.imgur.com/hwaYXat.png");
+                        author.Name = $"{user.Username} joined {user.Guild.Name}!";
+                        builder.Description = $"{Modules.BaseCommands.editMessage(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Welcome), user as IGuildUser, null, user.Guild as IGuild)}";
+                        author.IconUrl = user.GetAvatarUrl();
+                        builder.WithThumbnailUrl(user.GetAvatarUrl());
+                        builder.WithAuthor(author);
                         if (!jSon.Settings(user.Guild, Modules.BaseCommands.Settings.JoinRole).Equals("N/A"))
                         {
                             await user.AddRoleAsync(user.Guild.GetRole(Modules.BaseCommands.mention2role(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.JoinRole))));
@@ -177,10 +179,11 @@ namespace Daddy.Main
                 case JoinSeverity.UserLeft:
                     if (!Modules.BaseCommands.noSend.Contains(user.Id))
                     {
-                        if (jSon.checkPermChn(guild as IGuild, guild.DefaultChannel.Id, Modules.BaseCommands.Commands.Leave))
+                        if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Leave) && !user.IsBot)
                         {
-                            author.Name = $"{user.Username} left {user.Guild.Name} family!";
-                            builder.Description = $"{user.Username} has left {user.Guild.Name}!\n{jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Leave)}";
+                            author.Name = $"{user.Username} left {user.Guild.Name}!";
+                            author.IconUrl = user.GetAvatarUrl();
+                            builder.Description = $"{Modules.BaseCommands.editMessage(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Leave), user as IGuildUser, null, user.Guild as IGuild)}";
                         }
                         else
                         {
@@ -206,11 +209,8 @@ namespace Daddy.Main
                     builder.Description = $"**?NULL**";
                     break;
             }
-            author.IconUrl = user.GetAvatarUrl();
-            builder.WithThumbnailUrl(user.GetAvatarUrl());
-            builder.WithAuthor(author);
             builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-            await user.Guild.DefaultChannel.SendMessageAsync(string.Empty, false, embed: builder);
+            await (user.Guild.Channels.ToList().OrderBy(x => x.Id).First() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder);
         }
 
         public static async Task log(string message, LogSeverity severity = LogSeverity.Info, [System.Runtime.CompilerServices.CallerMemberName] string source = "", Exception exception = null)
@@ -230,7 +230,7 @@ namespace Daddy.Main
 
         public static bool HasConsecutiveWords(string source, int sequenceLength)
         {
-            return Regex.IsMatch(source, @"(\b(\w+)\s+){" + (sequenceLength - 1) + @"}\1\b");//NEEDS FIX
+            return Regex.IsMatch(source, @"((\b(\w+)\s+){" + (sequenceLength - 1) + @"}\3\b)");//NEEDS FIX - (\b(\w+)\s+){" + (sequenceLength - 1) + @"}\1\b"
         }
 
         public static bool HasConsecutiveEmojis(string source, int sequenceLength)
@@ -256,7 +256,8 @@ namespace Daddy.Main
                 $"Shard: {_client.ShardId} / 1",
                 $"in {guilds} guilds #{_client.ShardId}",
                 $"Latency: {_client.Latency}ms",
-                $"{GC.GetTotalMemory(true)} bytes used" };
+                $"{GC.GetTotalMemory(true) / 1000000} Megabytes used",
+                $"daddybot.me | .help" };
             await _client.SetGameAsync(games[_ran.Next(games.Length)]);
         }
 
@@ -264,8 +265,8 @@ namespace Daddy.Main
         {
             EmbedBuilder builder = new EmbedBuilder();
             EmbedAuthorBuilder author = new EmbedAuthorBuilder();
-            author.Name = $"{_client.CurrentUser.Username} joined {arg.Name} family!";
-            builder.Description = $"Bot made by: [Pat](https://steamcommunity.com/id/0xPat/)\nBot made for: [M&D](https://discord.gg/dFKerFY)\nBot created: {_client.CurrentUser.CreatedAt}\nType .help for command info";
+            author.Name = $"{_client.CurrentUser.Username} joined {arg.Name}!";
+            builder.Description = $"Bot made by: [Pat](http://daddybot.me/)\nBot made for: [M&D](https://discord.gg/D6qd4BE)\nBot created: {_client.CurrentUser.CreatedAt.Day}/{_client.CurrentUser.CreatedAt.Month}/{_client.CurrentUser.CreatedAt.Year} [D/M/Y]\nType .help for command info";
             //builder.WithImageUrl("http://i.imgur.com/hwaYXat.png");
             author.IconUrl = _client.CurrentUser.GetAvatarUrl();
             builder.WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl());
