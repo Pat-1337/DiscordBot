@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json;
@@ -35,8 +35,14 @@ namespace Daddy.Database
 
         public static string getToken()
         {
-            Dictionary<string, string> obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText($@"Token\token.json"));
+            Dictionary<string, string> obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText($@"_bot/token.json"));
             return obj["Token"];
+        }
+
+        public static string getHelp()
+        {
+            Dictionary<string, string> obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText($@"_bot/token.json"));
+            return obj["Help"];
         }
 
         public bool checkPermChn(IGuild guild, ulong id, Modules.BaseCommands.Commands cmd)
@@ -46,25 +52,25 @@ namespace Daddy.Database
             {
                 Main.Daddy._client.Guilds.ToList().ForEach(async x =>
                 {
-                    if (!File.Exists($@"json\jayson_{x.Id}.json") && x.Id.Equals(guild.Id))
+                    if (!File.Exists($@"json/jayson_{x.Id}.json") && x.Id.Equals(guild.Id))
                     {
                         IEnumerable<IGuildChannel> channels = (await guild.GetChannelsAsync()).Where(y => y is SocketTextChannel).ToList().OrderBy(y => y.Position);
                         _bc.perm.Clear();
                         channels.ToList().ForEach(z => _bc.perm.Add(z.Id, _bc.inPerm));
-                        File.WriteAllText($@"json\jayson_{guild.Id}.json", JsonConvert.SerializeObject(_bc.perm, Formatting.Indented));
+                        File.WriteAllText($@"json/jayson_{guild.Id}.json", JsonConvert.SerializeObject(_bc.perm, Formatting.Indented));
                     }
                 });
-                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json\jayson_{guild.Id}.json"));
+                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json/jayson_{guild.Id}.json"));
                 return _parm[id][cmd];
             }
             catch
             {
-                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm0 = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json\jayson_{guild.Id}.json"));
+                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm0 = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json/jayson_{guild.Id}.json"));
                 Dictionary<Modules.BaseCommands.Commands, bool> _parm1 = _parm0[id];
                 _parm1.Add(cmd, _bc.inPerm.Where(x => x.Key.Equals(cmd)).Select(x => x.Value).Single());
                 _parm0[id] = _parm1;
-                File.WriteAllText($@"json\jayson_{guild.Id}.json", JsonConvert.SerializeObject(_parm0, Formatting.Indented));
-                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm2 = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json\jayson_{guild.Id}.json"));
+                File.WriteAllText($@"json/jayson_{guild.Id}.json", JsonConvert.SerializeObject(_parm0, Formatting.Indented));
+                Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>> _parm2 = JsonConvert.DeserializeObject<Dictionary<ulong, Dictionary<Modules.BaseCommands.Commands, bool>>>(File.ReadAllText($@"json/jayson_{guild.Id}.json"));
                 return _parm2[id][cmd];
                 //return _bc.inPerm.Where(x => x.Key.Equals(cmd)).Select(x => x.Value).Single();
             }
@@ -77,24 +83,24 @@ namespace Daddy.Database
             {
                 Main.Daddy._client.Guilds.ToList().ForEach(x =>
                 {
-                    if (!File.Exists($@"Settings\settings_{x.Id}.json") && x.Id.Equals(guild.Id))
+                    if (!File.Exists($@"Settings/settings_{x.Id}.json") && x.Id.Equals(guild.Id))
                     {
                         _bc.welcome.Clear();
                         _bc.welcome.Add("Settings", _bc.inWelcome);
-                        File.WriteAllText($@"Settings\settings_{guild.Id}.json", JsonConvert.SerializeObject(_bc.welcome, Formatting.Indented));
+                        File.WriteAllText($@"Settings/settings_{guild.Id}.json", JsonConvert.SerializeObject(_bc.welcome, Formatting.Indented));
                     }
                 });
-                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings\settings_{guild.Id}.json"));
+                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings/settings_{guild.Id}.json"));
                 return _json["Settings"][stg];
             }
             catch
             {
-                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json0 = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings\settings_{guild.Id}.json"));
+                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json0 = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings/settings_{guild.Id}.json"));
                 Dictionary<Modules.BaseCommands.Settings, string> _json1 = _json0["Settings"];
                 _json1.Add(stg, _bc.inWelcome.Where(x => x.Key.Equals(stg)).Select(x => x.Value).Single());
                 _json0["Settings"] = _json1;
-                File.WriteAllText($@"Settings\settings_{guild.Id}.json", JsonConvert.SerializeObject(_json0, Formatting.Indented));
-                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json2 = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings\settings_{guild.Id}.json"));
+                File.WriteAllText($@"Settings/settings_{guild.Id}.json", JsonConvert.SerializeObject(_json0, Formatting.Indented));
+                Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>> _json2 = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Modules.BaseCommands.Settings, string>>>(File.ReadAllText($@"Settings/settings_{guild.Id}.json"));
                 return _json2["Settings"][stg];
                 //return _bc.inWelcome.Where(x => x.Key.Equals(stg)).Select(x => x.Value).Single()
             }
@@ -115,19 +121,19 @@ namespace Daddy.Database
                 Release = time,
                 Roles = ((user as SocketGuildUser).Roles).Where(x => x.Id != guild.EveryoneRole.Id).Select(y => y.Id).ToArray()
             };
-            File.WriteAllText($@"Time\time_{guild.Id}.json", AddTimeBan(timer));
+            File.WriteAllText($@"Time/time_{guild.Id}.json", AddTimeBan(timer));
         }
 
         public bool getTime(IGuild guild, ulong id)
         {
             Main.Daddy._client.Guilds.ToList().ForEach(x =>
             {
-                if (!File.Exists($@"Time\time_{x.Id}.json") && x.Id.Equals(guild.Id))
+                if (!File.Exists($@"Time/time_{x.Id}.json") && x.Id.Equals(guild.Id))
                 {
-                    File.Create($@"Time\time_{x.Id}.json").Dispose();
+                    File.Create($@"Time/time_{x.Id}.json").Dispose();
                 }
             });
-            JObject rss = JObject.Parse(File.ReadAllText($@"Time\time_{guild.Id}.json"));
+            JObject rss = JObject.Parse(File.ReadAllText($@"Time/time_{guild.Id}.json"));
             JArray dataTable = (JArray)rss["_root"];
             for (int y = 0; y < dataTable.Count; y++)
             {
@@ -194,13 +200,5 @@ namespace Daddy.Database
 
             return token;
         }
-        /*[TestMethod]
-        public void can_remove_json_field_removeFields()
-        {
-            string original = "{\"d\":{\"results\":[{\"__metadata\":{},\"remove\":\"done\",\"prop1\":\"value1\",\"prop2\":\"value2\",\"__some\":\"value\"},{\"__metadata\":{},\"prop3\":\"value1\",\"prop4\":\"value2\",\"__some\":\"value\"}],\"__metadata\":{\"prop3\":\"value1\",\"prop4\":\"value2\"}}}";
-            string expected = "{\"d\":{\"results\":[{\"prop1\":\"value1\",\"prop2\":\"value2\",\"__some\":\"value\"},{\"prop3\":\"value1\",\"prop4\":\"value2\",\"__some\":\"value\"}]}}";
-            string actual = JToken.Parse(original).RemoveFields(new string[] { "__metadata", "remove" }).ToString(Newtonsoft.Json.Formatting.None);
-            Assert.AreEqual(expected, actual);
-        }*/
-        }
+    }
 }
