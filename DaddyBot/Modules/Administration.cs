@@ -12,7 +12,7 @@ using System.Diagnostics;
 
 namespace Daddy.Modules
 {
-    public class Administation : ModuleBase
+    public class Administration : ModuleBase
     {
         JSON jSon = new JSON();
         Random _ran = new Random();
