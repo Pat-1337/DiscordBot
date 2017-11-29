@@ -13,6 +13,9 @@ using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Daddy.Database;
 using System.Collections.Generic;
+using Discord.Audio;
+using Daddy.Modules.Audio;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Daddy.Main
 {
@@ -23,9 +26,13 @@ namespace Daddy.Main
         public static CommandService _commands;
         public static DiscordSocketClient _client;
         private CancellationTokenSource _cts;
+        private static AudioModule _audiom;
+        private static AudioService _audios;
+        private IServiceProvider _services;
         public static Random _ran = new Random();
         public static Daddy _instance = new Daddy();
         JSON jSon = new JSON();
+        Ext._vMem _vMem = new Ext._vMem();
         public static readonly string token = JSON.getToken();
         public Ext.Ext ObjectMemory { get; private set; }
 
@@ -48,12 +55,15 @@ namespace Daddy.Main
             _instance = this;
             _cts = new CancellationTokenSource();
             _commands = new CommandService();
+            _audios = new AudioService();
+            _audiom = new AudioModule(_audios);
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Info,
                 MessageCacheSize = 50
                 //TotalShards = 2
             });
+            _services = new ServiceCollection().AddSingleton(_client).AddSingleton(_commands).AddSingleton<AudioService>().BuildServiceProvider();
 
             _client.Log += Log;
 
@@ -71,33 +81,30 @@ namespace Daddy.Main
             _client.MessageReceived += HandleCommand;
 
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly());
+            //await _commands.AddModuleAsync<AudioModule>();
+            //await _commands.AddModuleAsync<AudioService>();
         }
 
         private async Task HandleCommand(SocketMessage arg)
         {
             var message = arg as SocketUserMessage;
-            if (message == null || arg.Author.IsBot)
-            {
+            if (message == null || arg.Author.IsBot) {
                 return;
             }
             int argPos = 0;
-            if (message.Content.Contains("https://discord.gg"))
-            {
+            if (message.Content.Contains("https://discord.gg")) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Please don't send invite links!");
             }
-            else if (message.Content.ToLower().Contains("valkyrie"))
-            {
+            else if (message.Content.ToLower().Contains("valkyrie")) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Die nigger");
             }
-            else if (message.Content.ToLower().Contains("kosovo je srbija"))
-            {
+            else if (message.Content.ToLower().Contains("kosovo je srbija")) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Screw Albania");
             }
-            else if (!Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.CharSpam)).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.CharSpam))) && !Modules.BaseCommands.isVip(message.Author))
-            {
+            else if (!Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.CharSpam]).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.CharSpam])) && !Modules.BaseCommands.isVip(message.Author)) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }
@@ -112,14 +119,12 @@ namespace Daddy.Main
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }*/
-            else if (!(message.HasCharPrefix(Convert.ToChar(jSon.Settings((message.Channel as SocketGuildChannel).Guild, Modules.BaseCommands.Settings.Prefix)), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos)))
-            {
+            else if (!(message.HasCharPrefix(Convert.ToChar(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.Prefix]), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) {
                 return;
             }
             var context = new CommandContext(_client, message);
-            var result = await _commands.ExecuteAsync(context, argPos);
-            if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-            {
+            var result = await _commands.ExecuteAsync(context, argPos, _services);
+            if (!result.IsSuccess && result.Error != CommandError.UnknownCommand) {
                 await context.Channel.SendMessageAsync(result.ErrorReason);
             }
         }
@@ -130,6 +135,8 @@ namespace Daddy.Main
             _client.LeftGuild += Client_LeftGuild;
             _client.UserJoined += Client_UserJoined;
             _client.UserLeft += Client_UserLeft;
+            _client.UserBanned += Client_UserBanned;
+            _client.Ready += Client_Ready;
         }
 
         private async Task Client_UserJoined(SocketGuildUser arg)
@@ -152,56 +159,61 @@ namespace Daddy.Main
             await sendJoinMSG(null, arg, JoinSeverity.BotLeft);
         }
 
+        private async Task Client_UserBanned(SocketUser arg, SocketGuild sg)
+        {
+            Modules.BaseCommands.noSend.Add(arg.Id);
+            await Task.CompletedTask;
+        }
+
+        private async Task Client_Ready()
+        {
+            _vMem._run();
+            await Task.CompletedTask;
+        }
+
         public async Task sendJoinMSG(SocketGuildUser user = null, SocketGuild guild = null, JoinSeverity j = JoinSeverity.Null)
         {
             EmbedBuilder builder = new EmbedBuilder();
             EmbedAuthorBuilder author = new EmbedAuthorBuilder();
-            switch (j)
-            {
+            switch (j) {
                 case JoinSeverity.UserJoined:
-                    if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Welcome) && !user.IsBot)
-                    {
+                    if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Welcome) && !user.IsBot) {
                         author.Name = $"{user.Username} joined {user.Guild.Name}!";
-                        builder.Description = $"{Modules.BaseCommands.editMessage(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Welcome), user as IGuildUser, null, user.Guild as IGuild)}";
+                        builder.Description = Modules.BaseCommands.editMessage(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.Welcome].ToString(), user as IGuildUser, null, user.Guild as IGuild);
                         author.IconUrl = user.GetAvatarUrl();
                         builder.WithThumbnailUrl(user.GetAvatarUrl());
                         builder.WithAuthor(author);
-                        if (!jSon.Settings(user.Guild, Modules.BaseCommands.Settings.JoinRole).Equals("N/A"))
-                        {
+                        /*if (!jSon.Settings(user.Guild, Modules.BaseCommands.Settings.JoinRole).Equals("N/A")) {
                             await user.AddRoleAsync(user.Guild.GetRole(Modules.BaseCommands.mention2role(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.JoinRole))));
+                        }*/
+                        if(!Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.JoinRole].Equals("N/A")) {
+                            await user.AddRoleAsync(user.Guild.GetRole(Modules.BaseCommands.mention2role(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.JoinRole].ToString())));
                         }
                     }
-                    else
-                    {
+                    else {
                         return;
                     }
                     break;
                 case JoinSeverity.UserLeft:
-                    if (!Modules.BaseCommands.noSend.Contains(user.Id))
-                    {
-                        if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Leave) && !user.IsBot)
-                        {
-                            author.Name = $"{user.Username} left {user.Guild.Name}!";
-                            author.IconUrl = user.GetAvatarUrl();
-                            builder.Description = $"{Modules.BaseCommands.editMessage(jSon.Settings(user.Guild, Modules.BaseCommands.Settings.Leave), user as IGuildUser, null, user.Guild as IGuild)}";
+                    if (!Modules.BaseCommands.noSend.Contains(user.Id)) {
+                        if (jSon.checkPermChn((user.Guild as IGuild), user.Guild.Channels.First().Id, Modules.BaseCommands.Commands.Leave) && !user.IsBot) {
+                            builder.Description = Modules.BaseCommands.editMessage(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.Leave].ToString(), user as IGuildUser, null, user.Guild as IGuild);
                         }
-                        else
-                        {
+                        else {
                             return;
                         }
                         break;
                     }
-                    else
-                    {
+                    else {
                         return;
                     }
                 case JoinSeverity.BotJoined:
-                    await Task.Delay(2250);
                     await sendWelcomeMsg(guild);
                     return;
                 case JoinSeverity.BotLeft:
+                    JSON.deleteJSON(guild as IGuild);
                     builder.Description = $"";
-                    break;
+                    return;
                 case JoinSeverity.Null:
                     builder.Description = $"**NULL**";
                     break;
@@ -210,14 +222,13 @@ namespace Daddy.Main
                     break;
             }
             builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-            await (user.Guild.Channels.ToList().OrderBy(x => x.Id).First() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder);
+            await (user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder.Build());
         }
 
         public static async Task log(string message, LogSeverity severity = LogSeverity.Info, [System.Runtime.CompilerServices.CallerMemberName] string source = "", Exception exception = null)
         {
             await Console.Error.WriteLineAsync($"[{severity}][{source}] {message}");
-            if (exception != null)
-            {
+            if (exception != null) {
                 await Console.Error.WriteLineAsync(exception.ToString());
                 await Console.Error.WriteLineAsync();
             }
@@ -240,50 +251,62 @@ namespace Daddy.Main
 
         async Task RunPeriodically(Action action, TimeSpan interval, CancellationToken token)
         {
-            while (true)
-            {
+            while (true) {
                 action();
                 await Task.Delay(interval, token);
             }
         }
 
-        public async void _game()//games[_ran.Next(games.Length)]
+        public async void _game()
         {
             int guilds = _client.Guilds.Count;
+            int members = 0;
+            foreach (SocketGuild guild in _client.Guilds) {
+                members += guild.MemberCount;
+            }
             await Task.Delay(1750);
             string[] games = new string[] {
-                $"Uptime: {(int)(DateTime.Now - Process.GetCurrentProcess().StartTime).TotalMinutes} minutes",
+                $"Uptime: {(int)(DateTime.Now - Process.GetCurrentProcess().StartTime).TotalHours} hours",
                 $"Shard: {_client.ShardId} / 1",
                 $"in {guilds} guilds #{_client.ShardId}",
                 $"Latency: {_client.Latency}ms",
                 $"{GC.GetTotalMemory(true) / 1000000} Megabytes used",
-                $"daddybot.me | .help" };
+                $"daddybot.me | .help",
+                $"daddybot.me | .invite",
+                $"with {members} users!" };
             await _client.SetGameAsync(games[_ran.Next(games.Length)]);
         }
 
         public async Task sendWelcomeMsg(SocketGuild arg)
         {
-            EmbedBuilder builder = new EmbedBuilder();
-            EmbedAuthorBuilder author = new EmbedAuthorBuilder();
-            author.Name = $"{_client.CurrentUser.Username} joined {arg.Name}!";
-            builder.Description = $"Bot made by: [Pat](http://daddybot.me/)\nBot made for: [M&D](https://discord.gg/D6qd4BE)\nBot created: {_client.CurrentUser.CreatedAt.Day}/{_client.CurrentUser.CreatedAt.Month}/{_client.CurrentUser.CreatedAt.Year} [D/M/Y]\nType .help for command info";
-            //builder.WithImageUrl("http://i.imgur.com/hwaYXat.png");
-            author.IconUrl = _client.CurrentUser.GetAvatarUrl();
-            builder.WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl());
-            builder.WithAuthor(author);
-            builder.Color = new Discord.Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-            await arg.DefaultChannel.SendMessageAsync(string.Empty, false, embed: builder);
+            await Task.Delay(2250);
             Modules.BaseCommands _bc = new Modules.BaseCommands();
-            if (!Modules.BaseCommands.doesExistJson(arg as IGuild))
-            {
+            if (!Modules.BaseCommands.doesExistJson(arg as IGuild)) {
                 Modules.BaseCommands.createJson(arg as IGuild);
             }
+            EmbedBuilder embed = new EmbedBuilder()
+            {
+                Author = new EmbedAuthorBuilder()
+                {
+                    Name = $"{_client.CurrentUser.Username} joined {arg.Name}!",
+                    IconUrl = _client.CurrentUser.GetAvatarUrl()
+                },
+                Title = $"{_client.CurrentUser}",
+                Description = $"Bot made by: [Pat](http://daddybot.me/)\nBot made for: [M&D](https://discord.gg/D6qd4BE)\nBot created: {_client.CurrentUser.CreatedAt.Day}/{_client.CurrentUser.CreatedAt.Month}/{_client.CurrentUser.CreatedAt.Year} [D/M/Y]\nType .help for command info",
+                ThumbnailUrl = _client.CurrentUser.GetAvatarUrl(),
+                Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+            };
+            await (arg.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: embed.WithFooter(y => y.WithText(arg.Name)).WithCurrentTimestamp().Build());
+            if (!Modules.BaseCommands.doesExistSettings(arg as IGuild)) {
+                Modules.BaseCommands.createSettings(arg as IGuild);
+            }
+            _vMem._run();
         }
 
         public enum JoinSeverity
         {
             Null = -1,
-            UserJoined = 0, 
+            UserJoined = 0,
             UserLeft = 1,
             BotJoined = 2,
             BotLeft = 3
@@ -292,8 +315,7 @@ namespace Daddy.Main
         private static Task Log(LogMessage arg)
         {
             var cc = Console.ForegroundColor;
-            switch (arg.Severity)
-            {
+            switch (arg.Severity) {
                 case LogSeverity.Critical:
                 case LogSeverity.Error:
                     Console.ForegroundColor = ConsoleColor.Red;
