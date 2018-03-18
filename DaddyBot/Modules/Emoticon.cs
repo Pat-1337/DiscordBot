@@ -11,6 +11,7 @@ using System.Linq;
 using System.Diagnostics;
 using Imouto.BooruParser;
 using Imouto.BooruParser.Loaders;
+using Daddy.Ext;
 
 namespace Daddy.Modules
 {
@@ -18,7 +19,8 @@ namespace Daddy.Modules
     {
         private static readonly string[] hugGifs = new string[] { "https://myanimelist.cdn-dena.com/s/common/uploaded_files/1461073447-335af6bf0909c799149e1596b7170475.gif",
             "http://gifimage.net/wp-content/uploads/2017/01/Anime-hug-GIF-Image-Download-20.gif", "https://m.popkey.co/fca5d5/bXDgV.gif", "https://media.giphy.com/media/l4FGza2kjFT3BJ3K8/giphy.gif",
-            "https://media.giphy.com/media/3oKIPmUzjvyx1xCmru/giphy.gif", "https://i.giphy.com/143v0Z4767T15e.gif" };
+            "https://media.giphy.com/media/3oKIPmUzjvyx1xCmru/giphy.gif", "https://i.giphy.com/143v0Z4767T15e.gif", "https://d.wattpad.com/story_parts/314301302/images/1476c62b891dce82219301612602.gif",
+            "https://data.whicdn.com/images/135392484/original.gif", "https://media.giphy.com/media/svXXBgduBsJ1u/giphy.gif" };
         private static readonly string[] patGifs = new string[] { "https://m.popkey.co/a5cfaf/1x6lW.gif", "https://media.tenor.co/images/bf646b7164b76efe82502993ee530c78/tenor.gif",
             "https://68.media.tumblr.com/cc0451847fa08b202f4bd7a1cb9bd327/tumblr_o2js2xhINq1tydz8to1_500.gif", "https://media.tenor.co/images/68d981347bf6ee8c7d6b78f8a7fe3ccb/tenor.gif",
             "https://i.giphy.com/iGZJRDVEM6iOc.gif", "https://68.media.tumblr.com/71d93048022df065a1d2af96ab71afa3/tumblr_olykrec0DB1qbvovho1_500.gif" };
@@ -26,7 +28,8 @@ namespace Daddy.Modules
             "http://i3.kym-cdn.com/photos/images/original/001/117/646/bf9.gif", "https://media.giphy.com/media/iWAqMe8hBWKVq/giphy-downsized-large.gif", "https://i.giphy.com/LdsJrFnANh6HS.gif" };
         private static readonly string[] kissGifs = new string[] { "https://i.giphy.com/12VXIxKaIEarL2.gif", "https://media.tenor.co/images/802f7fa791471c2e33dc06475d2b54c8/tenor.gif",
             "https://i.giphy.com/QGc8RgRvMonFm.gif", "http://24.media.tumblr.com/dc0496ce48c1c33182f24b1535521af2/tumblr_mo77fusajy1spwngeo1_500.gif",
-            "https://68.media.tumblr.com/d07fcdd5deb9d2cf1c8c44ffad04e274/tumblr_ok1kd5VJju1vlvf9to1_500.gif", "https://68.media.tumblr.com/60c27235f6440d9d6ebd8168bb75c384/tumblr_nxd3nn8iJ81rcikyeo1_500.gif" };
+            "https://68.media.tumblr.com/d07fcdd5deb9d2cf1c8c44ffad04e274/tumblr_ok1kd5VJju1vlvf9to1_500.gif", "https://68.media.tumblr.com/60c27235f6440d9d6ebd8168bb75c384/tumblr_nxd3nn8iJ81rcikyeo1_500.gif",
+            "https://media3.giphy.com/media/VXsUx3zjzwMhi/giphy.gif" };
         private static readonly string[] laughGifs = new string[] { "https://i.giphy.com/mnBsYB19OQCdy.gif", "http://i.imgur.com/5EMqe6Y.gif", "https://media.tenor.co/images/766b72ce843075ebe5a3d10841a3651b/tenor.gif",
             "https://s-media-cache-ak0.pinimg.com/originals/c0/7c/28/c07c28b2f57bc12ec07d947c8877bfe7.gif", "https://i.giphy.com/QKO4Fvdlrop6o.gif" };
         private static readonly string[] slapGifs = new string[] { "http://i0.kym-cdn.com/photos/images/newsfeed/000/940/326/086.gif", "https://31.media.tumblr.com/a6db390ca2a6daaf930cac40cfe85743/tumblr_n8m1dib4eP1tet3lvo1_500.gif",
@@ -59,10 +62,10 @@ namespace Daddy.Modules
         Database.JSON jSon = new Database.JSON();
         public static Emoticon instance = new Emoticon();
 
-        [Command("hug", RunMode = RunMode.Async), Summary("Hugs a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("hug", RunMode = RunMode.Async), Summary("Hugs a person."), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Hug([Summary("Hugged person."), Remainder()]IUser arg = null)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Hug))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Hug))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -76,6 +79,7 @@ namespace Daddy.Modules
                     else
                     {
                         builder.Title = $"{Context.User.Username} is a lonely fuck.";
+                        builder.WithImageUrl("https://media.giphy.com/media/sLA17korcDnz2/giphy.gif");
                     }
                 }
                 else
@@ -94,54 +98,72 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("pat", RunMode = RunMode.Async), Summary("Pats a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("pat", RunMode = RunMode.Async), Summary("Pats a person."), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Pat([Summary("Patted person."), Remainder()]IUser arg)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pat))
+            try
             {
-                var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                await Console.Out.WriteLineAsync("1");
+                if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pat))
                 {
-                    if (!BaseCommands.SpecialPeople(arg.Id))
+                    await Console.Out.WriteLineAsync("2");
+                    var sw = Stopwatch.StartNew();
+                    EmbedBuilder builder = new EmbedBuilder();
+                    if (arg != null)
                     {
-                        if (!arg.Equals(Context.User))
+                        await Console.Out.WriteLineAsync("3");
+                        if (!BaseCommands.SpecialPeople(arg.Id))
                         {
-                            builder.Title = $"{Context.User.Username} pats {arg.Username}! Awww, cute!";
-                            builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
+                            await Console.Out.WriteLineAsync("4");
+                            if (!arg.Equals(Context.User))
+                            {
+                                await Console.Out.WriteLineAsync("5");
+                                builder.Title = $"{Context.User.Username} pats {arg.Username}! Awww, cute!";
+                                builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
+                            }
+                            else
+                            {
+                                await Console.Out.WriteLineAsync("5");
+                                builder.Title = $"{Context.User.Username} pats their lonely head!";
+                                builder.WithImageUrl("https://i.imgur.com/aykz290.gif");
+                            }
                         }
                         else
                         {
-                            builder.Title = $"{Context.User.Username} pats their lonely head!";
-                            builder.WithImageUrl("https://i.imgur.com/aykz290.gif");
+                            await Console.Out.WriteLineAsync("6");
+                            builder.Title = "no.";
+                            builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
                         }
                     }
                     else
                     {
-                        builder.Title = $"no.";
-                        builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
+                        await Console.Out.WriteLineAsync("3");
+                        builder.Title = $"{Context.Client.CurrentUser.Username} pats {Context.User.Username}! Awww, cute!";
+                        builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
                     }
+                    await Console.Out.WriteLineAsync("7");
+                    builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
+                    builder.WithCurrentTimestamp();
+                    sw.Stop();
+                    await Console.Out.WriteLineAsync("8");
+                    await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
+                    await Console.Out.WriteLineAsync("9");
                 }
                 else
                 {
-                    builder.Title = $"{Context.Client.CurrentUser.Username} pats {Context.User.Username}! Awww, cute!";
-                    builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
+                    await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
                 }
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
-                sw.Stop();
-                await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
+            catch (Exception e)
             {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
+                await Console.Out.WriteLineAsync(e.ToString());
             }
         }
 
-        [Command("kiss", RunMode = RunMode.Async), Summary("Kisses a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("kiss", RunMode = RunMode.Async), Summary("Kisses a person."), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Kiss([Summary("Kissed person."), Remainder()]IUser arg = null)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Kiss))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Kiss))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -172,10 +194,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("laugh", RunMode = RunMode.Async), Summary("Laugh at person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("laugh", RunMode = RunMode.Async), Summary("Laugh at person."), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Laugh([Summary("User")]IUser arg = null)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Laugh))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Laugh))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -206,15 +228,15 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("nosebleed", RunMode = RunMode.Async), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("nosebleed", RunMode = RunMode.Async), Ratelimit(2, 0.5, Measure.Minutes)]
         public async Task Nosebleed()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Nosebleed))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Nosebleed))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
                 {
-                    Title = $"(꒪ཀ꒪)",
+                    Title = "(꒪ཀ꒪)",
                     ImageUrl = nosebleedGifs[_ran.Next(nosebleedGifs.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
                 };
@@ -228,15 +250,15 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("airplane", RunMode = RunMode.Async), Alias("plane"), Ext.Ratelimit(3, 1, Ext.Measure.Minutes)]
+        [Command("airplane", RunMode = RunMode.Async), Alias("plane"), Summary("Ask fucking Justino"), Ratelimit(3, 1, Measure.Minutes)]
         public async Task Airplane()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Airplane))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Airplane))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
                 {
-                    Title = $"ask Justino.",
+                    Title = "ask Justino.",
                     ImageUrl = airplane[_ran.Next(airplane.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
                 };
@@ -250,16 +272,16 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("boss", RunMode = RunMode.Async), Ext.Ratelimit(1, 5, Ext.Measure.Minutes)]
+        [Command("boss", RunMode = RunMode.Async), Ext.Ratelimit(1, 5, Measure.Minutes)]
         public async Task Boss()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Boss))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Boss))
             {
                 await Context.Message.DeleteAsync();
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
                 {
-                    Title = $"88",
+                    Title = "88",
                     ImageUrl = boss,
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
                 };
@@ -273,10 +295,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("punch", RunMode = RunMode.Async), Summary("Punches a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("punch", RunMode = RunMode.Async), Summary("Punches a person."), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Punch([Summary("Punched person")]IUser arg)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Punch))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Punch))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -289,7 +311,7 @@ namespace Daddy.Modules
                     }
                     else
                     {
-                        builder.Title = $"no.";
+                        builder.Title = "no.";
                         builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
                     }
                 }
@@ -309,10 +331,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("slap", RunMode = RunMode.Async), Summary("Punches a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("slap", RunMode = RunMode.Async), Summary("Punches a person."), Ext.Ratelimit(3, 1, Measure.Minutes)]
         public async Task Slap([Summary("Punched person")]IUser arg)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Slap))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Slap))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -325,7 +347,7 @@ namespace Daddy.Modules
                     }
                     else
                     {
-                        builder.Title = $"no.";
+                        builder.Title = "no.";
                         builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
                     }
                 }
@@ -345,10 +367,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("pout", RunMode = RunMode.Async), Summary("Pout"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("pout", RunMode = RunMode.Async), Summary("Pout"), Ext.Ratelimit(2, 1, Measure.Minutes)]
         public async Task Pout()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pout))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pout))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -367,10 +389,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("cry", RunMode = RunMode.Async), Summary(":'("), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("cry", RunMode = RunMode.Async), Summary(":'("), Ext.Ratelimit(2, 1, Measure.Minutes)]
         public async Task Cry([Summary("IUser")]IUser arg = null)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cry))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cry))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -394,10 +416,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("rage", RunMode = RunMode.Async), Alias("angry"), Summary("Kisses a person."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("rage", RunMode = RunMode.Async), Alias("angry"), Summary("Kisses a person."), Ratelimit(2, 1, Ext.Measure.Minutes)]
         public async Task Rage([Summary("Kissed person.")]IUser arg = null)
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Rage))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Rage))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
@@ -421,10 +443,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("cat", RunMode = RunMode.Async), Alias("pussy"), Ext.Ratelimit(3, 1, Ext.Measure.Minutes)]
+        [Command("cat", RunMode = RunMode.Async), Alias("pussy"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Cat()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cat))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cat))
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("http://random.cat/meow")))
@@ -434,7 +456,7 @@ namespace Daddy.Modules
                     JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder builder = new EmbedBuilder()
                     {
-                        Title = $":cat:",
+                        Title = ":cat:",
                         ImageUrl = serializer.Deserialize<Dictionary<string, string>>(jr).First().Value,
                         Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
                     };
@@ -449,10 +471,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("dog", RunMode = RunMode.Async), Alias("doggo"), Ext.Ratelimit(3, 1, Ext.Measure.Minutes)]
+        [Command("dog", RunMode = RunMode.Async), Alias("doggo"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Dog()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Dog))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Dog))
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("https://random.dog/woof.json")))
@@ -477,10 +499,10 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("bird", RunMode = RunMode.Async), Alias("birb"), Ext.Ratelimit(3, 1, Ext.Measure.Minutes)]
+        [Command("bird", RunMode = RunMode.Async), Alias("birb"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Bird()
         {
-            if (jSon.checkPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Bird))
+            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Bird))
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -506,9 +528,9 @@ namespace Daddy.Modules
         Database.JSON jSon = new Database.JSON();
 
         [Command("lewd", RunMode = RunMode.Async), Summary("Sends random neko NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task lewd()
+        public async Task Lewd()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("https://nekos.life/api/lewd/neko")))
@@ -532,9 +554,9 @@ namespace Daddy.Modules
         }
 
         [Command("neko", RunMode = RunMode.Async), Summary("Sends random neko picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task neko()
+        public async Task Neko()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("https://nekos.life/api/neko")))
@@ -558,9 +580,9 @@ namespace Daddy.Modules
         }
 
         [Command("boobs", RunMode = RunMode.Async), Alias("tits"), Summary("Sends random boob NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task boobs()
+        public async Task Boobs()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri($"http://api.oboobs.ru/boobs/{_ran.Next(12000)}")))
@@ -583,14 +605,14 @@ namespace Daddy.Modules
         }
 
         [Command("gif", RunMode = RunMode.Async), Alias(".gif"), Summary("Sends random NSFW gif trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task gif()
+        public async Task Gif()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder embed = new EmbedBuilder()
                 {
-                    ImageUrl = $"https://cdn.boobbot.us/Gifs/gif{_ran.Next(1000)}.gif"
+                    ImageUrl = $"https://cdn.boobbot.us/Gifs/{_ran.Next(1600, 2000)}.gif"
                 };
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
@@ -602,9 +624,9 @@ namespace Daddy.Modules
         }
 
         [Command("ass", RunMode = RunMode.Async), Alias("butt"), Summary("Sends random ass NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task ass()
+        public async Task Ass()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri($"http://api.obutts.ru/butts/{_ran.Next(4500)}")))
@@ -627,9 +649,9 @@ namespace Daddy.Modules
         }
 
         [Command("yre", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task yandere([Summary("Search term"), Remainder()]string search = null)
+        public async Task Yandere([Summary("Search term"), Remainder()]string search = null)
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 if (string.IsNullOrEmpty(search))
@@ -672,9 +694,9 @@ namespace Daddy.Modules
         }
 
         [Command("e621", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task e621([Summary("Search term"), Remainder()]string search = null)
+        public async Task E621([Summary("Search term"), Remainder()]string search = null)
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 if (string.IsNullOrEmpty(search))
@@ -717,9 +739,9 @@ namespace Daddy.Modules
         }
 
         [Command("dan", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task danbooru()
+        public async Task Danbooru()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 var request = (HttpWebRequest)WebRequest.Create("https://danbooru.donmai.us/posts/1.json");
@@ -742,9 +764,9 @@ namespace Daddy.Modules
         }
 
         [Command("hq", RunMode = RunMode.Async), Summary("Sends random hq NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task hq()
+        public async Task Hq()
         {
-            if (Context.Channel.IsNsfw)
+            if (Context.Channel._isNSFW())
             {
                 var sw = Stopwatch.StartNew();
                 int y = _ran.Next(1, 1460);
