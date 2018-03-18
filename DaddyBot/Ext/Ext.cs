@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
@@ -18,7 +18,7 @@ namespace Daddy.Ext
         public string Title = null;
     }
 
-    public class Extensions
+    public static class Extensions
     {
         public static async Task<EmbedBuilder> BuildBotAnswer(Subject<FieldValue> subject)
         {
@@ -38,6 +38,24 @@ namespace Daddy.Ext
         public static string StripBlock(string content)
         {
             return content.Replace("```", "’’’");
+        }
+
+        /// <summary> Checks if the channel is NSFW. </summary>
+        public static bool _isNSFW(this IMessageChannel x)
+        {
+            if (x.IsNsfw || x.Name.ToLower().Contains("nsfw")) {
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary> Checks if the server is Premium. </summary>
+        public static bool _isPremium(this IGuild x)
+        {
+            if (!((ulong)(long)_vMem._vMemory[x.Id][Modules.BaseCommands.Settings.Premium]).Equals(0)) {
+                return true;
+            }
+            return false;
         }
     }
 
@@ -125,6 +143,107 @@ namespace Daddy.Ext
             }
             return default(T);
         }
+
+        public object GetProperty(SocketCommandContext context, object obj, TypeInfo type, string path)
+        {
+            int i = path.IndexOf('.');
+            string segment;
+            if (i == -1)
+                segment = path;
+            else
+                segment = path.Substring(0, i);
+
+            if (type == null) //Topmost
+            {
+                switch (segment)
+                {
+                    case "client":
+                        obj = context.Client;
+                        break;
+                    case "message":
+                        obj = context.Message;
+                        break;
+                    case "channel":
+                        obj = context.Channel;
+                        break;
+                    case "guild":
+                        obj = context.Guild;
+                        break;
+                    case "user":
+                        obj = context.User;
+                        break;
+                    default:
+                        if (segment.StartsWith("{") && segment.EndsWith("}"))
+                        {
+                            var parts = segment.Trim('{', '}', ' ').Split(':');
+                            if (parts.Length != 2) throw new FormatException("Could not parse the property as an argument.");
+                            if (!ulong.TryParse(parts[1], out ulong id)) throw new ArgumentException("The second part of the property must be an ID.");
+                            switch (parts[0])
+                            {
+                                case "message":
+                                    obj = context.Channel.GetMessageAsync(id).GetAwaiter().GetResult();
+                                    break;
+                                case "user":
+                                    obj = context.Channel.GetUserAsync(id).GetAwaiter().GetResult();
+                                    break;
+                                case "channel":
+                                    obj = context.Guild.GetChannel(id);
+                                    break;
+                                case "guild":
+                                    obj = context.Client.GetGuild(id);
+                                    break;
+                                case "role":
+                                    obj = context.Guild.GetRole(id);
+                                    break;
+                                default:
+                                    throw new ArgumentException($"Could not parse '{parts[0]}' as a valid property type");
+                            }
+                        }
+                        break;
+                }
+            }
+            else
+            {
+                var property = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .Where(x => x.Name == segment)
+                    .FirstOrDefault();
+                if (property == null)
+                    throw new InvalidOperationException($"{type.Name} does not have a property {segment}.");
+                obj = property.GetValue(obj);
+            }
+
+            if (i == -1 || obj == null)
+                return obj;
+            else
+            {
+                type = obj.GetType().GetTypeInfo();
+                return GetProperty(context, obj, type, path.Substring(i + 1));
+            }
+        }
+
+        public string InspectProperty(object obj)
+        {
+            if (obj == null)
+                return "null";
+
+            var type = obj.GetType();
+
+            var debuggerDisplay = type.GetProperty("DebuggerDisplay", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (debuggerDisplay != null)
+                return debuggerDisplay.GetValue(obj).ToString();
+
+            var toString = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(x => x.Name == "ToString" && x.DeclaringType != typeof(object))
+                .FirstOrDefault();
+            if (toString != null)
+                return obj.ToString();
+
+            var count = type.GetProperty("Count", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (count != null)
+                return $"[{count.GetValue(obj)} Items]";
+
+            return obj.ToString();
+        }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
@@ -148,7 +267,7 @@ namespace Daddy.Ext
             _noLimitInDMs = noLimitInDMs;
             _noLimitForAdmins = noLimitForAdmins;
 
-            //TODO: C# 7 candidate switch expression
+            ///TODO: C# 7 candidate switch expression
             switch (measure)
             {
                 case Measure.Days:
