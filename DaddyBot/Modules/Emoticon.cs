@@ -9,8 +9,8 @@ using System.IO;
 using Newtonsoft.Json;
 using System.Linq;
 using System.Diagnostics;
-using Imouto.BooruParser;
 using Imouto.BooruParser.Loaders;
+using Imouto.BooruParser.Model.Base;
 using Daddy.Ext;
 
 namespace Daddy.Modules
@@ -24,14 +24,19 @@ namespace Daddy.Modules
         private static readonly string[] patGifs = new string[] { "https://m.popkey.co/a5cfaf/1x6lW.gif", "https://media.tenor.co/images/bf646b7164b76efe82502993ee530c78/tenor.gif",
             "https://68.media.tumblr.com/cc0451847fa08b202f4bd7a1cb9bd327/tumblr_o2js2xhINq1tydz8to1_500.gif", "https://media.tenor.co/images/68d981347bf6ee8c7d6b78f8a7fe3ccb/tenor.gif",
             "https://i.giphy.com/iGZJRDVEM6iOc.gif", "https://68.media.tumblr.com/71d93048022df065a1d2af96ab71afa3/tumblr_olykrec0DB1qbvovho1_500.gif" };
-        private static readonly string[] punchGifs = new string[] { "https://i.giphy.com/10Im1VWMHQYfQI.gif", "https://s-media-cache-ak0.pinimg.com/originals/e6/f9/7c/e6f97cb321e8b8a0fed85195d47d7832.gif",
+        private static readonly string[] punchGifs = new string[] { "https://i.giphy.com/10Im1VWMHQYfQI.gif",
             "http://i3.kym-cdn.com/photos/images/original/001/117/646/bf9.gif", "https://media.giphy.com/media/iWAqMe8hBWKVq/giphy-downsized-large.gif", "https://i.giphy.com/LdsJrFnANh6HS.gif" };
         private static readonly string[] kissGifs = new string[] { "https://i.giphy.com/12VXIxKaIEarL2.gif", "https://media.tenor.co/images/802f7fa791471c2e33dc06475d2b54c8/tenor.gif",
             "https://i.giphy.com/QGc8RgRvMonFm.gif", "http://24.media.tumblr.com/dc0496ce48c1c33182f24b1535521af2/tumblr_mo77fusajy1spwngeo1_500.gif",
             "https://68.media.tumblr.com/d07fcdd5deb9d2cf1c8c44ffad04e274/tumblr_ok1kd5VJju1vlvf9to1_500.gif", "https://68.media.tumblr.com/60c27235f6440d9d6ebd8168bb75c384/tumblr_nxd3nn8iJ81rcikyeo1_500.gif",
-            "https://media3.giphy.com/media/VXsUx3zjzwMhi/giphy.gif" };
+            "https://media3.giphy.com/media/VXsUx3zjzwMhi/giphy.gif", "https://cdn.discordapp.com/attachments/350311986212372481/427589428358414357/l2RnXBJ.gif" };
+        private static readonly string[] lickGifs = new string[] { "https://cdn.discordapp.com/attachments/425431625820667914/427589734672629760/source.gif", "https://cdn.discordapp.com/attachments/425431625820667914/427589737423831071/tumblr_nilduszHqD1sl24cuo1_500.gif",
+            "http://gifimage.net/wp-content/uploads/2017/09/anime-lick-gif-9.gif", "https://i.imgur.com/XchuI.gif", "https://media1.giphy.com/media/8GiREm7aqMwN2/giphy.gif", "https://cdn.discordapp.com/attachments/427584696663146496/427597702969163786/uALJJV2.gif" };
         private static readonly string[] laughGifs = new string[] { "https://i.giphy.com/mnBsYB19OQCdy.gif", "http://i.imgur.com/5EMqe6Y.gif", "https://media.tenor.co/images/766b72ce843075ebe5a3d10841a3651b/tenor.gif",
             "https://s-media-cache-ak0.pinimg.com/originals/c0/7c/28/c07c28b2f57bc12ec07d947c8877bfe7.gif", "https://i.giphy.com/QKO4Fvdlrop6o.gif" };
+        private static readonly string[] cuckGifs = new string[] { "https://cdn.discordapp.com/attachments/427584696663146496/427588915080462347/416c4df8914a5cdfc73c7e20fe81944b.gif", "https://cdn.discordapp.com/attachments/427584696663146496/427590830690402304/tumblr_mqpz8vLgwP1ryckawo1_500.gif",
+            "https://cdn.discordapp.com/attachments/427584696663146496/427590831826796555/tumblr_inline_n2t71dNNUf1rup8k6.gif", "https://cdn.discordapp.com/attachments/427584696663146496/427590831118090240/ZsV7c8Z.gif",
+            "https://cdn.discordapp.com/attachments/427584696663146496/427590832296820740/46eced1b69b6646ec5695608857cce75280c1e7e_hq.gif" };
         private static readonly string[] slapGifs = new string[] { "http://i0.kym-cdn.com/photos/images/newsfeed/000/940/326/086.gif", "https://31.media.tumblr.com/a6db390ca2a6daaf930cac40cfe85743/tumblr_n8m1dib4eP1tet3lvo1_500.gif",
             "https://i.giphy.com/LeTDEozJwatvW.gif", "https://i.giphy.com/Zau0yrl17uzdK.gif", "https://i.giphy.com/nesNeNkOb9Tz2.gif", "https://i.giphy.com/jLeyZWgtwgr2U.gif" };
         private static readonly string[] poutGifs = new string[] { "http://pa1.narvii.com/5805/6f8b4788caf1fc9f343ced4a93d43787a4022477_hq.gif", "https://myanimelist.cdn-dena.com/s/common/uploaded_files/1453266384-80b5e1f6f3080634c4692c0ca5a584f0.gif",
@@ -62,176 +67,126 @@ namespace Daddy.Modules
         Database.JSON jSon = new Database.JSON();
         public static Emoticon instance = new Emoticon();
 
-        [Command("hug", RunMode = RunMode.Async), Summary("Hugs a person."), Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("hug", RunMode = RunMode.Async), Summary("Hugs a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Hug([Summary("Hugged person."), Remainder()]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Hug))
+            if (jSon._permWR(Context, BaseCommands.Commands.Hug).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    if (!arg.Equals(Context.User))
-                    {
-                        builder.Title = $"{Context.User.Username} hugs {arg.Username}!";
-                        builder.WithImageUrl(hugGifs[_ran.Next(hugGifs.Length)]);
-                    }
-                    else
-                    {
-                        builder.Title = $"{Context.User.Username} is a lonely fuck.";
-                        builder.WithImageUrl("https://media.giphy.com/media/sLA17korcDnz2/giphy.gif");
-                    }
-                }
-                else
-                {
-                    builder.Title = $"{Context.Client.CurrentUser.Username} hugs {Context.User.Username}! Cute and cuddly!";
-                    builder.WithImageUrl(hugGifs[_ran.Next(hugGifs.Length)]);
-                }
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = ((arg != null) ? ((!arg.Equals(Context.User)) ? $"{Context.User.Username} hugs {arg.Username}!"
+                        : $"{Context.User.Username} is a lonely fuck.")
+                            : $"{Context.Client.CurrentUser.Username} hugs {Context.User.Username}! Cute and cuddly!"),
+                    ImageUrl = ((arg != null) ? ((!arg.Equals(Context.User)) ? hugGifs[_ran.Next(hugGifs.Length)]
+                        : "https://media.giphy.com/media/sLA17korcDnz2/giphy.gif")
+                            : hugGifs[_ran.Next(hugGifs.Length)]),
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("pat", RunMode = RunMode.Async), Summary("Pats a person."), Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("pat", RunMode = RunMode.Async), Summary("Pats a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Pat([Summary("Patted person."), Remainder()]IUser arg)
         {
-            try
+            if (jSon._permWR(Context, BaseCommands.Commands.Pat).Result)
             {
-                await Console.Out.WriteLineAsync("1");
-                if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pat))
+                var sw = Stopwatch.StartNew();
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    await Console.Out.WriteLineAsync("2");
-                    var sw = Stopwatch.StartNew();
-                    EmbedBuilder builder = new EmbedBuilder();
-                    if (arg != null)
-                    {
-                        await Console.Out.WriteLineAsync("3");
-                        if (!BaseCommands.SpecialPeople(arg.Id))
-                        {
-                            await Console.Out.WriteLineAsync("4");
-                            if (!arg.Equals(Context.User))
-                            {
-                                await Console.Out.WriteLineAsync("5");
-                                builder.Title = $"{Context.User.Username} pats {arg.Username}! Awww, cute!";
-                                builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
-                            }
-                            else
-                            {
-                                await Console.Out.WriteLineAsync("5");
-                                builder.Title = $"{Context.User.Username} pats their lonely head!";
-                                builder.WithImageUrl("https://i.imgur.com/aykz290.gif");
-                            }
-                        }
-                        else
-                        {
-                            await Console.Out.WriteLineAsync("6");
-                            builder.Title = "no.";
-                            builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
-                        }
-                    }
-                    else
-                    {
-                        await Console.Out.WriteLineAsync("3");
-                        builder.Title = $"{Context.Client.CurrentUser.Username} pats {Context.User.Username}! Awww, cute!";
-                        builder.WithImageUrl(patGifs[_ran.Next(patGifs.Length)]);
-                    }
-                    await Console.Out.WriteLineAsync("7");
-                    builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                    builder.WithCurrentTimestamp();
-                    sw.Stop();
-                    await Console.Out.WriteLineAsync("8");
-                    await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                    await Console.Out.WriteLineAsync("9");
-                }
-                else
-                {
-                    await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-                }
-            }
-            catch (Exception e)
-            {
-                await Console.Out.WriteLineAsync(e.ToString());
+                    Title = (arg != null ? ((!BaseCommands.SpecialPeople(arg.Id)) ? ((!arg.Equals(Context.User)) ? $"{Context.User.Username} pats {arg.Username}! Awww, cute!" 
+                        : $"{Context.User.Username} pats their lonely head!") : "no.")
+                            : $"{Context.Client.CurrentUser.Username} pats {Context.User.Username}! Awww, cute!"),
+                    ImageUrl = (arg != null ? ((!BaseCommands.SpecialPeople(arg.Id)) ? ((!arg.Equals(Context.User)) ? patGifs[_ran.Next(patGifs.Length)]
+                        : "https://i.imgur.com/aykz290.gif") : "http://i.imgur.com/F0nMzoJ.gif")
+                            : patGifs[_ran.Next(patGifs.Length)]),
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
+                sw.Stop();
+                await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
         }
 
-        [Command("kiss", RunMode = RunMode.Async), Summary("Kisses a person."), Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("kiss", RunMode = RunMode.Async), Summary("Kisses a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Kiss([Summary("Kissed person."), Remainder()]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Kiss))
+            if (jSon._permWR(Context, BaseCommands.Commands.Kiss).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    if (!arg.Equals(Context.User))
-                    {
-                        builder.Title = $"{Context.User.Username} kissed {arg.Username}! >///< :hearts:";
-                    }
-                    else
-                    {
-                        builder.Title = $"{Context.User.Username} wanted a kiss, so {Context.Client.CurrentUser.Username} gave them one :hearts:";
-                    }
-                }
-                else
-                {
-                    builder.Title = $"{Context.Client.CurrentUser.Username} kissed {Context.User.Username}! :hearts:";
-                }
-                builder.WithImageUrl(kissGifs[_ran.Next(kissGifs.Length)]);
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = (arg != null ? ((!arg.Equals(Context.User)) ? $"{Context.User.Username} kissed {arg.Username}! >///< :hearts:"
+                        : $"{Context.User.Username} wanted a kiss, so {Context.Client.CurrentUser.Username} gave them one :hearts:")
+                            : $"{Context.Client.CurrentUser.Username} kissed {Context.User.Username}! :hearts:"),
+                    ImageUrl = kissGifs[_ran.Next(kissGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
+        }
+
+        [Command("lick", RunMode = RunMode.Async), Summary("Licks a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
+        public async Task Lick([Summary("Licked person."), Remainder()]IUser arg = null)
+        {
+            if (jSon._permWR(Context, BaseCommands.Commands.Lick).Result)
             {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
+                var sw = Stopwatch.StartNew();
+                EmbedBuilder builder = new EmbedBuilder()
+                {
+                    Title = (arg != null ? ((!arg.Equals(Context.User)) ? $"{Context.User.Username} licked {arg.Username}! :tongue:"
+                    : $"{Context.User.Username} wanted a lick, so {Context.Client.CurrentUser.Username} gave them one! :tongue:")
+                        : $"{Context.Client.CurrentUser.Username} licked {Context.User.Username}! :tongue:"),
+                    ImageUrl = lickGifs[_ran.Next(lickGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
+                sw.Stop();
+                await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
         }
 
-        [Command("laugh", RunMode = RunMode.Async), Summary("Laugh at person."), Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("cockblock", RunMode = RunMode.Async), Alias("cuck"), Summary("Cucks a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
+        public async Task Cuck([Summary("Cucked person."), Remainder()]IUser arg)
+        {
+            if (jSon._permWR(Context, BaseCommands.Commands.Cuck).Result)
+            {
+                var sw = Stopwatch.StartNew();
+                EmbedBuilder builder = new EmbedBuilder
+                {
+                    Title = $"{Context.User.Username} cucked {arg.Username}!",
+                    ImageUrl = cuckGifs[_ran.Next(cuckGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
+                sw.Stop();
+                await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
+            }
+        }
+
+        [Command("laugh", RunMode = RunMode.Async), Summary("Laugh at person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Laugh([Summary("User")]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Laugh))
+            if (jSon._permWR(Context, BaseCommands.Commands.Laugh).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    if (!arg.Equals(Context.User))
-                    {
-                        builder.Title = $"{Context.User.Username} laughs at {arg.Username}! HA-HA!";
-                    }
-                    else
-                    {
-                        builder.Title = $"{Context.User.Username} bursts out laughing! HA-HA!";
-                    }
-                }
-                else
-                {
-                    builder.Title = $"{Context.User.Username} laughs! HA-HA!";
-                }
-                builder.WithImageUrl(laughGifs[_ran.Next(laughGifs.Length)]);
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = (arg != null ? ((!arg.Equals(Context.User)) ? $"{Context.User.Username} laughs at {arg.Username}! HA-HA!"
+                    : $"{Context.User.Username} bursts out laughing! HA-HA!")
+                        : $"{Context.User.Username} laughs! HA-HA!"),
+                    ImageUrl = laughGifs[_ran.Next(laughGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("nosebleed", RunMode = RunMode.Async), Ratelimit(2, 0.5, Measure.Minutes)]
+        [Command("nosebleed", RunMode = RunMode.Async), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(2, 0.5, Measure.Minutes)]
         public async Task Nosebleed()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Nosebleed))
+            if (jSon._permWR(Context, BaseCommands.Commands.Nosebleed).Result)
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -239,21 +194,16 @@ namespace Daddy.Modules
                     Title = "(꒪ཀ꒪)",
                     ImageUrl = nosebleedGifs[_ran.Next(nosebleedGifs.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                };
-                builder.WithCurrentTimestamp();
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("airplane", RunMode = RunMode.Async), Alias("plane"), Summary("Ask fucking Justino"), Ratelimit(3, 1, Measure.Minutes)]
+        [Command("airplane", RunMode = RunMode.Async), Alias("plane"), Summary("Ask fucking Justino"), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 1, Measure.Minutes)]
         public async Task Airplane()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Airplane))
+            if (jSon._permWR(Context, BaseCommands.Commands.Airplane).Result)
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -261,21 +211,16 @@ namespace Daddy.Modules
                     Title = "ask Justino.",
                     ImageUrl = airplane[_ran.Next(airplane.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                };
-                builder.WithCurrentTimestamp();
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("boss", RunMode = RunMode.Async), Ext.Ratelimit(1, 5, Measure.Minutes)]
+        [Command("boss", RunMode = RunMode.Async), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(1, 5, Measure.Minutes)]
         public async Task Boss()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Boss))
+            if (jSon._permWR(Context, BaseCommands.Commands.Boss).Result)
             {
                 await Context.Message.DeleteAsync();
                 var sw = Stopwatch.StartNew();
@@ -284,93 +229,50 @@ namespace Daddy.Modules
                     Title = "88",
                     ImageUrl = boss,
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                };
-                builder.WithCurrentTimestamp();
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("punch", RunMode = RunMode.Async), Summary("Punches a person."), Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("punch", RunMode = RunMode.Async), Summary("Punches a person."), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Punch([Summary("Punched person")]IUser arg)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Punch))
+            if (jSon._permWR(Context, BaseCommands.Commands.Punch).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    if (!BaseCommands.SpecialPeople(arg.Id))
-                    {
-                        builder.Title = $"{Context.User.Username} punches {arg.Username}! Ouch, that hurts!";
-                        builder.WithImageUrl(punchGifs[_ran.Next(punchGifs.Length)]);
-                    }
-                    else
-                    {
-                        builder.Title = "no.";
-                        builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
-                    }
-                }
-                else
-                {
-                    builder.Title = $"{Context.Client.CurrentUser.Username} punches {Context.User.Username}! Ouch, that hurts!";
-                    builder.WithImageUrl(punchGifs[_ran.Next(punchGifs.Length)]);
-                }
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = $"{((arg != null) ? Context.User.Username : Context.Client.CurrentUser.Username)} punches {((arg != null) ? arg.Username : Context.User.Username)}! Ouch, that hurts!",
+                    ImageUrl = slapGifs[_ran.Next(slapGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255))),
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("slap", RunMode = RunMode.Async), Summary("Punches a person."), Ext.Ratelimit(3, 1, Measure.Minutes)]
+        [Command("slap", RunMode = RunMode.Async), Summary("Punches a person."), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(3, 1, Measure.Minutes)]
         public async Task Slap([Summary("Punched person")]IUser arg)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Slap))
+            if (jSon._permWR(Context, BaseCommands.Commands.Slap).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    if (!BaseCommands.SpecialPeople(arg.Id))
-                    {
-                        builder.Title = $"{Context.User.Username} slaps {arg.Username}! SLAP!";
-                        builder.WithImageUrl(slapGifs[_ran.Next(slapGifs.Length)]);
-                    }
-                    else
-                    {
-                        builder.Title = "no.";
-                        builder.WithImageUrl("http://i.imgur.com/F0nMzoJ.gif");
-                    }
-                }
-                else
-                {
-                    builder.Title = $"{Context.Client.CurrentUser.Username} slaps {Context.User.Username}! SLAP!";
-                    builder.WithImageUrl(slapGifs[_ran.Next(slapGifs.Length)]);
-                }
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = $"{((arg != null) ? Context.User.Username : Context.Client.CurrentUser.Username)} slaps {((arg != null) ? arg.Username : Context.User.Username)}! SLAP!",
+                    ImageUrl = slapGifs[_ran.Next(slapGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("pout", RunMode = RunMode.Async), Summary("Pout"), Ext.Ratelimit(2, 1, Measure.Minutes)]
+        [Command("pout", RunMode = RunMode.Async), Summary("Pout"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(2, 1, Measure.Minutes)]
         public async Task Pout()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Pout))
+            if (jSon._permWR(Context, BaseCommands.Commands.Pout).Result)
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -378,131 +280,95 @@ namespace Daddy.Modules
                     Title = $"{Context.User.Username} pouts!",
                     ImageUrl = poutGifs[_ran.Next(poutGifs.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255))),
-                };
-                builder.WithCurrentTimestamp();
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("cry", RunMode = RunMode.Async), Summary(":'("), Ext.Ratelimit(2, 1, Measure.Minutes)]
+        [Command("cry", RunMode = RunMode.Async), Summary(":'("), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(2, 1, Measure.Minutes)]
         public async Task Cry([Summary("IUser")]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cry))
+            if (jSon._permWR(Context, BaseCommands.Commands.Cry).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder
                 {
-                    builder.Title = $"{Context.User.Username}'s cries on {arg.Username} shoulder! :cry:";
-                }
-                else
-                {
-                    builder.Title = $"{Context.User.Username} is crying! What happened?!";
-                }
-                builder.WithImageUrl(cryGifs[_ran.Next(cryGifs.Length)]);
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = (arg != null ? $"{Context.User.Username}'s cries on {arg.Username} shoulder! :cry:"
+                    : $"{Context.User.Username} is crying! What happened?!"),
+                    ImageUrl = cryGifs[_ran.Next(cryGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("rage", RunMode = RunMode.Async), Alias("angry"), Summary("Kisses a person."), Ratelimit(2, 1, Ext.Measure.Minutes)]
-        public async Task Rage([Summary("Kissed person.")]IUser arg = null)
+        [Command("rage", RunMode = RunMode.Async), Alias("angry"), Summary("Rages"), RequireBotPermission(GuildPermission.SendMessages), Ratelimit(2, 1, Ext.Measure.Minutes)]
+        public async Task Rage([Summary("Raged at")]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Rage))
+            if (jSon._permWR(Context, BaseCommands.Commands.Rage).Result)
             {
                 var sw = Stopwatch.StartNew();
-                EmbedBuilder builder = new EmbedBuilder();
-                if (arg != null)
+                EmbedBuilder builder = new EmbedBuilder()
                 {
-                    builder.Title = $"{Context.User.Username} is angry at {arg.Username}! :rage:";
-                }
-                else
-                {
-                    builder.Title = $"{Context.User.Username} is filled with rage!";
-                }
-                builder.WithImageUrl(angryGifs[_ran.Next(angryGifs.Length)]);
-                builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
-                builder.WithCurrentTimestamp();
+                    Title = (arg != null) ? $"{Context.User.Username} is angry at {arg.Username}! :rage:" : $"{Context.User.Username} is filled with rage!",
+                    ImageUrl = angryGifs[_ran.Next(angryGifs.Length)],
+                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("cat", RunMode = RunMode.Async), Alias("pussy"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("cat", RunMode = RunMode.Async), Alias("pussy"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Cat()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Cat))
+            if (jSon._permWR(Context, BaseCommands.Commands.Cat).Result)
             {
                 var sw = Stopwatch.StartNew();
-                using (Stream s = new WebClient().OpenRead(new Uri("http://random.cat/meow")))
+                using (Stream s = new WebClient().OpenRead(new Uri("http://aws.random.cat/meow")))//http://random.cat/meow - http://aws.random.cat/meow
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder builder = new EmbedBuilder()
                     {
                         Title = ":cat:",
-                        ImageUrl = serializer.Deserialize<Dictionary<string, string>>(jr).First().Value,
+                        ImageUrl = new JsonSerializer().Deserialize<Dictionary<string, string>>(jr).First().Value,
                         Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                    };
-                    builder.WithCurrentTimestamp();
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("dog", RunMode = RunMode.Async), Alias("doggo"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("dog", RunMode = RunMode.Async), Alias("doggo"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Dog()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Dog))
+            if (jSon._permWR(Context, BaseCommands.Commands.Dog).Result)
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("https://random.dog/woof.json")))
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder builder = new EmbedBuilder()
                     {
                         Title = $":dog:",
-                        ImageUrl = serializer.Deserialize<Dictionary<string, string>>(jr).First().Value,
+                        ImageUrl = new JsonSerializer().Deserialize<Dictionary<string, string>>(jr).First().Value,
                         Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                    };
-                    builder.WithCurrentTimestamp();
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("bird", RunMode = RunMode.Async), Alias("birb"), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
+        [Command("bird", RunMode = RunMode.Async), Alias("birb"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(3, 0.5, Measure.Minutes)]
         public async Task Bird()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, BaseCommands.Commands.Bird))
+            if (jSon._permWR(Context, BaseCommands.Commands.Bird).Result)
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder()
@@ -510,14 +376,9 @@ namespace Daddy.Modules
                     Title = $":bird:",
                     ImageUrl = birdsGifs[_ran.Next(birdsGifs.Length)],
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                };
-                builder.WithCurrentTimestamp();
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-            }
-            else
-            {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
             }
         }
     }
@@ -527,246 +388,205 @@ namespace Daddy.Modules
         Random _ran = new Random();
         Database.JSON jSon = new Database.JSON();
 
-        [Command("lewd", RunMode = RunMode.Async), Summary("Sends random neko NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("lewd", RunMode = RunMode.Async), Summary("Sends random neko NSFW picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Lewd()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
-                using (Stream s = new WebClient().OpenRead(new Uri("https://nekos.life/api/lewd/neko")))
+                using (Stream s = (new WebClient().OpenRead(new Uri("https://nekos.life/api/lewd/neko"))))
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder embed = new EmbedBuilder()
                     {
                         Title = "Neko :cat:",
-                        ImageUrl = serializer.Deserialize<Dictionary<string, string>>(jr).First().Value
-                    };
+                        ImageUrl = new JsonSerializer().Deserialize<Dictionary<string, string>>(jr).First().Value
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
         }
 
-        [Command("neko", RunMode = RunMode.Async), Summary("Sends random neko picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("neko", RunMode = RunMode.Async), Summary("Sends random neko picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Neko()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri("https://nekos.life/api/neko")))
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder embed = new EmbedBuilder()
                     {
                         Title = "Neko :cat:",
-                        ImageUrl = serializer.Deserialize<Dictionary<string, string>>(jr).First().Value
-                    };
+                        ImageUrl = new JsonSerializer().Deserialize<Dictionary<string, string>>(jr).First().Value
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
         }
 
-        [Command("boobs", RunMode = RunMode.Async), Alias("tits"), Summary("Sends random boob NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("boobs", RunMode = RunMode.Async), Alias("tits"), Summary("Sends random boob NSFW picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Boobs()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri($"http://api.oboobs.ru/boobs/{_ran.Next(12000)}")))
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder embed = new EmbedBuilder()
                     {
-                        ImageUrl = $"http://media.oboobs.ru/{serializer.Deserialize<List<Dictionary<string, string>>>(jr).First()["preview"]}"
-                    };
+                        ImageUrl = $"http://media.oboobs.ru/{new JsonSerializer().Deserialize<List<Dictionary<string, string>>>(jr).First()["preview"]}"
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
         }
 
-        [Command("gif", RunMode = RunMode.Async), Alias(".gif"), Summary("Sends random NSFW gif trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("gif", RunMode = RunMode.Async), Alias(".gif"), Summary("Sends random NSFW gif trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Gif()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder embed = new EmbedBuilder()
                 {
                     ImageUrl = $"https://cdn.boobbot.us/Gifs/{_ran.Next(1600, 2000)}.gif"
-                };
+                }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
         }
 
-        [Command("ass", RunMode = RunMode.Async), Alias("butt"), Summary("Sends random ass NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("ass", RunMode = RunMode.Async), Alias("butt"), Summary("Sends random ass NSFW picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Ass()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
                 using (Stream s = new WebClient().OpenRead(new Uri($"http://api.obutts.ru/butts/{_ran.Next(4500)}")))
                 using (StreamReader sr = new StreamReader(s))
                 using (JsonReader jr = new JsonTextReader(sr))
                 {
-                    JsonSerializer serializer = new JsonSerializer();
                     EmbedBuilder embed = new EmbedBuilder()
                     {
-                        ImageUrl = $"http://media.obutts.ru/{serializer.Deserialize<List<Dictionary<string, string>>>(jr).First()["preview"]}"
-                    };
+                        ImageUrl = $"http://media.obutts.ru/{new JsonSerializer().Deserialize<List<Dictionary<string, string>>>(jr).First()["preview"]}"
+                    }.WithCurrentTimestamp();
                     sw.Stop();
                     await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
         }
 
-        [Command("yre", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("yre", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Yandere([Summary("Search term"), Remainder()]string search = null)
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
-                if (string.IsNullOrEmpty(search))
-                {
-                    using (Stream s = new WebClient().OpenRead(new Uri($"https://yande.re/post.json?limit=50")))
-                    using (StreamReader sr = new StreamReader(s))
-                    using (JsonReader jr = new JsonTextReader(sr))
-                    {
-                        JsonSerializer serializer = new JsonSerializer();
-                        List<Dictionary<object, object>> myList = serializer.Deserialize<List<Dictionary<object, object>>>(jr);
-                        EmbedBuilder embed = new EmbedBuilder()
-                        {
-                            ImageUrl = $"{myList[_ran.Next(myList.Count)]["jpeg_url"]}"
-                        };
-                        sw.Stop();
-                        await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                    }
+                Post post;
+                if (NSFWengine(search, NSFWType.Yre).Result.Item1) {
+                    post = NSFWengine(search, NSFWType.Yre).Result.Item2;
                 }
-                else
-                {
-                    using (Stream s = new WebClient().OpenRead(new Uri($"https://yande.re/post.json?tags={search}")))
-                    using (StreamReader sr = new StreamReader(s))
-                    using (JsonReader jr = new JsonTextReader(sr))
-                    {
-                        JsonSerializer serializer = new JsonSerializer();
-                        List<Dictionary<object, object>> myList = serializer.Deserialize<List<Dictionary<object, object>>>(jr);
-                        EmbedBuilder embed = new EmbedBuilder()
-                        {
-                            ImageUrl = $"{myList[_ran.Next(myList.Count)]["jpeg_url"]}"
-                        };
-                        sw.Stop();
-                        await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                    }
-                }
-            }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
-        }
-
-        [Command("e621", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task E621([Summary("Search term"), Remainder()]string search = null)
-        {
-            if (Context.Channel._isNSFW())
-            {
-                var sw = Stopwatch.StartNew();
-                if (string.IsNullOrEmpty(search))
-                {
-                    using (Stream s = new WebClient().OpenRead(new Uri($"https://e621.net/post/index.json?limit=50")))
-                    using (StreamReader sr = new StreamReader(s))
-                    using (JsonReader jr = new JsonTextReader(sr))
-                    {
-                        JsonSerializer serializer = new JsonSerializer();
-                        List<Dictionary<object, object>> myList = serializer.Deserialize<List<Dictionary<object, object>>>(jr);
-                        EmbedBuilder embed = new EmbedBuilder()
-                        {
-                            ImageUrl = $"{myList[_ran.Next(myList.Count)]["file_url"]}"
-                        };
-                        sw.Stop();
-                        await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                    }
-                }
-                else
-                {
-                    using (Stream s = new WebClient().OpenRead(new Uri($"https://e621.net/post/index.json?tags={search}")))
-                    using (StreamReader sr = new StreamReader(s))
-                    using (JsonReader jr = new JsonTextReader(sr))
-                    {
-                        JsonSerializer serializer = new JsonSerializer();
-                        List<Dictionary<object, object>> myList = serializer.Deserialize<List<Dictionary<object, object>>>(jr);
-                        EmbedBuilder embed = new EmbedBuilder()
-                        {
-                            ImageUrl = $"{myList[_ran.Next(myList.Count)]["file_url"]}"
-                        };
-                        sw.Stop();
-                        await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                    }
-                }
-            }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
-        }
-
-        [Command("dan", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
-        public async Task Danbooru()
-        {
-            if (Context.Channel._isNSFW())
-            {
-                var sw = Stopwatch.StartNew();
-                var request = (HttpWebRequest)WebRequest.Create("https://danbooru.donmai.us/posts/1.json");
-                request.Method = "PUT";
-                /*
-                var danbooruLoader = new DanbooruLoader(Database.JSON.getApiNamedb(), Database.JSON.getApiKeydb(), 1240);
-                var post = await danbooruLoader.LoadPostAsync(_ran.Next(3000, 4000));
+                else { return; }
                 EmbedBuilder embed = new EmbedBuilder()
                 {
-                    ImageUrl = post.Source
+                    ImageUrl = post.OriginalUrl
                 };
                 sw.Stop();
-                await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-                */
-            }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
+                await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"by {post.PostedUser.Name}@yande.re | {sw.ElapsedMilliseconds}ms")).Build());
             }
         }
 
-        [Command("hq", RunMode = RunMode.Async), Summary("Sends random hq NSFW picture trough API"), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        [Command("e621", RunMode = RunMode.Async), Summary("Sends NSFW picture trough API"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        public async Task E621([Summary("Search term"), Remainder()]string search = null)
+        {
+            if (Context.Channel._isNSFW().Result)
+            {
+                var sw = Stopwatch.StartNew();
+                var wc = new WebClient();
+                wc.Headers.Add(HttpRequestHeader.UserAgent, Database.JSON.Gete621());
+                using (Stream s = wc.OpenRead(new Uri((string.IsNullOrEmpty(search) ? "https://e621.net/post/index.json?limit=50" : $"https://e621.net/post/index.json?tags={search}"))))
+                using (StreamReader sr = new StreamReader(s))
+                using (JsonReader jr = new JsonTextReader(sr))
+                {
+                    List<Dictionary<object, object>> myList = new JsonSerializer().Deserialize<List<Dictionary<object, object>>>(jr);
+                    EmbedBuilder embed = new EmbedBuilder()
+                    {
+                        ImageUrl = (string)myList[_ran.Next(myList.Count)]["file_url"]
+                    };
+                    sw.Stop();
+                    await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"by {(string)myList[_ran.Next(myList.Count)]["author"]}@e621.net | {sw.ElapsedMilliseconds}ms")).Build());
+                }
+            }
+        }
+
+        [Command("dan", RunMode = RunMode.Async), Summary("Sends NSFW picture"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
+        public async Task Danbooru(string search = null)
+        {
+            if (Context.Channel._isNSFW().Result)
+            {
+                var sw = Stopwatch.StartNew();
+                Post post;
+                if (NSFWengine(search, NSFWType.Dan).Result.Item1) {
+                    post = NSFWengine(search, NSFWType.Dan).Result.Item2;
+                }
+                else { return; }
+                EmbedBuilder embed = new EmbedBuilder()
+                {
+                    ImageUrl = post.OriginalUrl
+                };
+                sw.Stop();
+                await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"by {post.PostedUser.Name}@Danbooru | {sw.ElapsedMilliseconds}ms")).Build());
+            }
+        }
+
+        private async Task<Tuple<bool, Post>> NSFWengine(string search, NSFWType type)
+        {
+            int TTL = 0;
+            var post = await _post(search, type);
+            while (string.IsNullOrEmpty(post.OriginalUrl))
+            {
+                post = await _post(search, type);
+                TTL++;
+                if (TTL >= 5)
+                {
+                    await ReplyAsync("`Error! TTL > 5`");
+                    return new Tuple<bool, Post>(false, null);
+                }
+            }
+            return new Tuple<bool, Post>(true, post);
+        }
+
+        private async Task<Post> _post(string search, NSFWType type)
+        {
+            IBooruAsyncLoader loader;
+            switch (type) {
+                case NSFWType.Dan:
+                    loader = new DanbooruLoader(Database.JSON.GetApiNamedb(), Database.JSON.GetApiKeydb(), 120);
+                    break;
+                case NSFWType.Yre:
+                    loader = new YandereLoader();
+                    break;
+                default:
+                    return null;
+            }
+            var spost = (string.IsNullOrEmpty(search) ? await loader.LoadPopularAsync(PopularType.Day) : await loader.LoadSearchResultAsync(search));
+            var post = loader.LoadPostAsync(spost.Results[_ran.Next(spost.SearchCount ?? spost.Results.Count)].Id).Result;
+            return post;
+        }
+
+        [Command("hq", RunMode = RunMode.Async), Summary("Sends random hq NSFW picture"), RequireBotPermission(GuildPermission.SendMessages), Ext.Ratelimit(10, 0.5, Ext.Measure.Minutes)]
         public async Task Hq()
         {
-            if (Context.Channel._isNSFW())
+            if (Context.Channel._isNSFW().Result)
             {
                 var sw = Stopwatch.StartNew();
                 int y = _ran.Next(1, 1460);
@@ -777,10 +597,13 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else
-            {
-                await ReplyAsync("`NSFW required`");
-            }
+        }
+
+        private enum NSFWType
+        {
+            Dan = 0,
+            Yre = 1,
+            e621 = 2
         }
     }
 }
