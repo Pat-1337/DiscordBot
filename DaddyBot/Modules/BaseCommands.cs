@@ -1,7 +1,9 @@
 using Daddy.Database;
+using Daddy.Ext;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using DiscordBotsList.Api;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;//Install-Package Microsoft.CodeAnalysis.CSharp.Scripting //Microsoft.CodeAnalysis.Scripting
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -32,13 +34,16 @@ namespace Daddy.Modules
             { Commands.Iprune, true }, { Commands.Avatar, true }, { Commands.Channels, true }, { Commands.Info, true }, { Commands.Echo, false }, { Commands.Hug, true }, { Commands.Kiss, true }, { Commands.Laugh, true },
             { Commands.Punch, true }, { Commands.Slap, true }, { Commands.Pat, true }, { Commands.Pout, true }, { Commands.Cry, true }, { Commands.Rage, true }, { Commands.Nosebleed, true }, { Commands.Cat, true }, { Commands.Dog, true },
             { Commands.Bird, true }, { Commands.Help, true }, { Commands.Eval, false }, { Commands.Top, true }, { Commands.Normie, false }, { Commands.Boss, false }, { Commands.Airplane, true }, { Commands.Random, true }, { Commands.Hue, true },
-            { Commands.Write, true }, { Commands.Welcome, true }, { Commands.Leave, true }, { Commands.Permissions, false }, { Commands.Discriminator, true }, { Commands.Role, true }, { Commands.Gamble, false } };
+            { Commands.Write, true }, { Commands.Welcome, true }, { Commands.Leave, true }, { Commands.Permissions, false }, { Commands.Discriminator, true }, { Commands.Role, true }, { Commands.Gamble, false }, { Commands.Lick, true },
+            { Commands.Cuck, true } };
 
         public Dictionary<Settings, object> inWelcome = new Dictionary<Settings, object>() { { Settings.Welcome, "{user} joined {server}!\n[Please change welcome message with .welcome <message> or disable it with .disable welcome]" },
             { Settings.Leave, "{user} left {server}\n[Please change leave message with .leave <message> or disable it with .disable leave]!" }, { Settings.JoinRole, 0 },
-            { Settings.CharSpam, 0 }, { Settings.WordSpam, 0 }, { Settings.EmojiSpam, 0 }, { Settings.Prefix, '.' }, { Settings.DMmsg, 102 }, { Settings.LogCHN, 0 }, { Settings.Premium, 0 }, { Settings.WelcomeCHN, 0 } };
-        private IEnumerable<Type> _types = new Type[] { typeof(CommandService), typeof(Main.Daddy), typeof(BaseCommands), typeof(JSON), typeof(Emoji),
-            typeof(File), typeof(Discord.Rpc.DiscordRpcClient), typeof(DiscordSocketClient), typeof(IQueryable), typeof(Task), typeof(Process), typeof(Globals) };
+            { Settings.CharSpam, 0 }, { Settings.WordSpam, 0 }, { Settings.EmojiSpam, 0 }, { Settings.Prefix, '.' }, { Settings.DMmsg, 0 }, { Settings.LogCHN, 0 }, { Settings.Premium, 0 }, { Settings.WelcomeCHN, 0 },
+            { Settings.DeleteInviteMSG, 0 } };
+        public Dictionary<User, object> inUser = new Dictionary<User, object>() { { User.Shekels, 100 }, { User.Bank, 50 }, { User.Storage, 1 } };
+        private IEnumerable<Type> _types = new Type[] { typeof(CommandService), typeof(Main.Program), typeof(BaseCommands), typeof(JSON), typeof(Emoji),
+            typeof(File), typeof(DiscordShardedClient), typeof(BaseSocketClient), typeof(DiscordSocketClient), typeof(IQueryable), typeof(Task), typeof(Process), typeof(Globals) };
         private static Color Success = new Color(52, 249, 59);
         private static Color Error = new Color(249, 52, 52);
         private static Color Warning = new Color(255, 230, 40);
@@ -47,7 +52,7 @@ namespace Daddy.Modules
 
 
         JSON jSon = new JSON();
-        Ext._vMem _vMem = new Ext._vMem();
+        _vMem _vMem = new _vMem();
 
         [Command("shutdown", RunMode = RunMode.Async), Summary("Stops the bot")]
         public async Task Shutdown()
@@ -55,7 +60,7 @@ namespace Daddy.Modules
             if (SpecialPeople(Context.User.Id)) {
                 await Context.Message.DeleteAsync();
                 await ReplyAsync("Eval shutdown! Bye bye butterfly");
-                Main.Daddy._instance.Stop();
+                Main.Program._instance.Stop();
                 //Main.Daddy._map.Get<Main.Daddy>().Stop();
                 await Context.Client.StopAsync();
                 await Task.CompletedTask;
@@ -186,12 +191,12 @@ namespace Daddy.Modules
             }   
         }
 
-        [Command("profile", RunMode = RunMode.Async), Summary("Changes bot picture")]
+        [Command("client", RunMode = RunMode.Async), Summary("Changes bot picture")]
         public async Task Pfp(string URL)
         {
             if (SpecialPeople(Context.User.Id)) {
                 await Context.Message.DeleteAsync();
-                await Main.Daddy._client.CurrentUser.ModifyAsync(new Action<SelfUserProperties>((SelfUserProperties x) => x.Avatar = new Image(GetStreamFromUrl(URL))));
+                await Main.Program._client.CurrentUser.ModifyAsync(new Action<SelfUserProperties>((SelfUserProperties x) => x.Avatar = new Image(GetStreamFromUrl(URL))));
             }
             else {
                 await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
@@ -201,7 +206,7 @@ namespace Daddy.Modules
         [Command("hue", RunMode = RunMode.Async), Summary("Hueansohn"), Ext.Ratelimit(3, 1, Ext.Measure.Minutes)]
         public async Task ColoredMessage(float hue, float sat, float lit, string title, [Remainder]string text)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Hue)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Hue).Result) {
                 await Context.Message.DeleteAsync();
                 var sw = Stopwatch.StartNew();
                 var color = CustomColor.FromHSL(hue, sat, lit);
@@ -210,15 +215,12 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync("", embed: embedbuilder.WithFooter(x => x.WithText($"In {sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("echo", RunMode = RunMode.Async), Ext.Ratelimit(2, 1, Ext.Measure.Minutes)]
         public async Task Echo([Summary("Message you want to repeat back."), Remainder()]string arg)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Echo)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Echo).Result) {
                 var sw = Stopwatch.StartNew();
                 await Context.Message.DeleteAsync();
                 if (string.IsNullOrEmpty(arg)) {
@@ -235,15 +237,12 @@ namespace Daddy.Modules
                     await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("type", RunMode = RunMode.Async), Alias("write"), Summary("typewritermode"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task TypeWriter([Remainder]string text = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Write)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Write).Result) {
                 await Context.Message.DeleteAsync();
                 if (text.Split(' ').Length > 10) {
                     await ReplyAsync($"Max words: `10`");
@@ -251,7 +250,7 @@ namespace Daddy.Modules
                 }
                 await ReplyAsync("…");
                 await Task.Delay(1000);
-                IMessage msg = (await Context.Channel.GetMessagesAsync(Context.Message, Direction.After, 1).Flatten()).Where(x => x.Author.Id == Main.Daddy._client.CurrentUser.Id).Take(1).ToList().First();
+                IMessage msg = ((await Context.Channel.GetMessagesAsync(Context.Message, Direction.After, 1).FlattenAsync()).Where(x => x.Author.Id == Main.Program._client.CurrentUser.Id)).First();
                 string message = string.Empty;
                 if (text == null) return;
                 foreach (var c in RemoveAllMention(text).Split(' ')) {
@@ -268,36 +267,30 @@ namespace Daddy.Modules
                     }
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("ev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task Eval([Summary("Evaluating string"), Remainder()]string arg)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     try {
                         await _Eval(arg, false);
                     }
                     catch(Exception e) {
-                        await Main.Daddy.Log("_Eval", exception: e);
+                        await Main.Program.Log("_Eval", exception: e);
                     }
                 }
                 else {
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("Mev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task JsonEval([Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true, true);
                 }
@@ -305,15 +298,12 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("?!Mev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task SingleStaticEval(string methodName, [Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true, true, true, methodName);
                 }
@@ -321,15 +311,12 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("?Mev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task SingleEval(string methodName, [Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true, true, methodName: methodName);
                 }
@@ -337,16 +324,13 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
 
         [Command("!Mev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task StaticEval([Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true, true, true);
                 }
@@ -354,15 +338,12 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("Tev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task MEval([Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true);
                 }
@@ -370,15 +351,12 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("?Tev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task FiltJEval(string name, [Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, true, methodName: name);
                 }
@@ -386,24 +364,18 @@ namespace Daddy.Modules
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("?ev", RunMode = RunMode.Async), Summary("Evaluate code")]
         public async Task FiltEval(string name, [Remainder] string code)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Eval)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Eval).Result) {
                 if (SpecialPeople(Context.User.Id)) {
                     await _Eval(code, false, methodName: name);
                 }
                 else {
                     await ReplyAsync($"This command requires `BOT_OWNER` - you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
                 }
-            }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
             }
         }
 
@@ -470,15 +442,16 @@ namespace Daddy.Modules
         [Command("update", RunMode = RunMode.Async)]
         public async Task Update()
         {
-            if (SpecialPeople(Context.User.Id)) {
+            if (SpecialPeople(Context.User.Id))
+            {
                 await Context.Message.DeleteAsync();
-                if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
-                foreach (string x in Directory.EnumerateFiles(@"Settings/", "*", SearchOption.AllDirectories).Select(Path.GetFileName)/*Directory.GetFiles(@"Settings/"*/) {
-                    JObject rss = JObject.Parse(File.ReadAllText($@"Settings/{x}"));
+                Main.Program._client.Guilds.ToList().ForEach(x =>
+                {
+                    JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{x.Id}.json"));
                     JObject welcome = (JObject)rss["Settings"];
-                    welcome["JoinRole"] = Mention2role(Ext._vMem._vMemory[Mention2role(x)][Settings.JoinRole].ToString());
-                    File.WriteAllText($@"Settings/{x}", rss.ToString());
-                }
+                    welcome["DMmsg"] = 0;
+                    File.WriteAllText($@"Settings/settings_{x.Id}.json", rss.ToString());
+                });
                 _vMem._run();
             }
             else {
@@ -486,23 +459,16 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("test", RunMode = RunMode.Async)]
-        public async Task Test()
+        [Command("test", RunMode = RunMode.Async), RequireOwner()]
+        public async Task Test(uint days)
         {
             if (SpecialPeople(Context.User.Id)) {
-                EmbedBuilder builder = new EmbedBuilder()
-                {
-                    Title = "<a:typing:401791987579355137> test <a:Typing:398791357973528577>",
-                    Description = "<a:Typing:401791987579355137> test <a:typing:398791357973528577>",
-                    Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
-                }.WithCurrentTimestamp();
-                await ReplyAsync((string)Ext._vMem._vMemory[Context.Guild.Id][Settings.Welcome]);
-                await ReplyAsync((string)Ext._vMem._vMemory[Context.Guild.Id][Settings.Leave]);
-                await ReplyAsync($"{Ext._vMem._vMemory[Context.Guild.Id][Settings.DMmsg]}");
-                await ReplyAsync($"{Convert.ToInt32(Ext._vMem._vMemory[Context.Guild.Id][Settings.DMmsg]).Equals(116)}");
-                await ReplyAsync($"{jSon.CheckPermChn((Context.Guild as IGuild), Context.Channel.Id, Commands.Welcome)}");
-                await ReplyAsync(string.Empty, embed: builder.Build());
-                await ReplyAsync("<a:typing:401791987579355137> test <a:Typing:398791357973528577> - <a:Typing:401791987579355137> test <a:typing:398791357973528577>");
+                //IDblSelfBot y = await Main.Program.DblApiBot.GetMeAsync();
+                IDblUser y = await Main.Program.DblApiBot.GetUserAsync(Context.User.Id);
+                List<IDblEntity> list = await Main.Program.DblApiBot.GetVotersAsync((int?)days);
+                StringBuilder sb = new StringBuilder();
+                list.ForEach(x => { sb.AppendLine(x.Username); });
+                await ReplyAsync(sb.ToString());
             }
             else {
                 await ReplyAsync($"This command requires `BOT_OWNER` -> you have `{GetHighestPerm((Context.User as SocketGuildUser).GuildPermissions)}`.");
@@ -534,11 +500,8 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("JoinRole", arg.Id)) {
                     welcome["JoinRole"] = arg.Id;
-                }
-                catch {
-                    welcome.TryAdd("JoinRole", arg.Id);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -554,11 +517,8 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("LogCHN", arg.Id)) {
                     welcome["LogCHN"] = arg.Id;
-                }
-                catch {
-                    welcome.TryAdd("LogCHN", arg.Id);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -566,7 +526,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("wchannel", RunMode = RunMode.Async), Ext.Ratelimit(1, 1, Ext.Measure.Minutes), RequireUserPermissionAttribute(GuildPermission.Administrator)]
+        [Command("wchannel", RunMode = RunMode.Async), Ext.Ratelimit(1, 1, Ext.Measure.Minutes), RequireUserPermissionAttribute(GuildPermission.ManageRoles), RequireUserPermissionAttribute(GuildPermission.Administrator)]
         public async Task SetWelcome([Summary("channel")]IMessageChannel arg)
         {
             await Context.Message.DeleteAsync();
@@ -575,13 +535,8 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try
-                {
+                if (!welcome.TryAdd("WelcomeCHN", arg.Id)) {
                     welcome["WelcomeCHN"] = arg.Id;
-                }
-                catch
-                {
-                    welcome.TryAdd("WelcomeCHN", arg.Id);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -594,31 +549,23 @@ namespace Daddy.Modules
             if (!DoesExistSettings((arg as SocketGuildChannel).Guild)) { CreateSettings((arg as SocketGuildChannel).Guild); }
             JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{(arg as SocketGuildChannel).Guild.Id}.json"));
             JObject welcome = (JObject)rss["Settings"];
-            try
-            {
+            if (!welcome.TryAdd("WelcomeCHN", arg.Id)) {
                 welcome["WelcomeCHN"] = arg.Id;
-            }
-            catch
-            {
-                welcome.TryAdd("WelcomeCHN", arg.Id);
             }
             File.WriteAllText($@"Settings/settings_{(arg as SocketGuildChannel).Guild.Id}.json", rss.ToString());
             await Task.CompletedTask;
         }
 
-        [Command("schar", RunMode = RunMode.Async)]
-        public async Task AntiCharSpam([Summary("char spam"), Remainder()]int arg)
+        [Command("schar", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task AntiCharSpam([Summary("char spam")]int arg)
         {
             if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("CharSpam", arg)) {
                     welcome["CharSpam"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("CharSpam", arg);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -626,19 +573,16 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("sword", RunMode = RunMode.Async)]
-        public async Task AntiWordSpam([Summary("word spam"), Remainder()]int arg)
+        [Command("sword", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task AntiWordSpam([Summary("word spam")]int arg)
         {
             if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("WordSpam", arg)) {
                     welcome["WordSpam"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("WordSpam", arg);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -646,7 +590,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("semoji", RunMode = RunMode.Async)]
+        [Command("semoji", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
         public async Task AntiEmojiSpam([Summary("word spam"), Remainder()]int arg)
         {
             if (IsVip(Context.User as SocketUser)) {
@@ -654,11 +598,8 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("EmojiSpam", arg)) {
                     welcome["EmojiSpam"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("EmojiSpam", arg);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -666,19 +607,16 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("welcome", RunMode = RunMode.Async)]
-        public async Task Welcome([Summary("msg"), Remainder()]string arg)
+        [Command("welcome", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task Welcome([Summary("msg")]string arg)
         {
-            if (IsVip(Context.User as SocketUser) && !string.IsNullOrEmpty(jSon.Settings(Context.Guild, Settings.Welcome))) {
+            if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("Welcome", arg)) {
                     welcome["Welcome"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("Welcome", arg);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -686,19 +624,16 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("leave", RunMode = RunMode.Async)]
-        public async Task Leave([Summary("msg"), Remainder()]string arg)
+        [Command("leave", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task Leave([Summary("msg")]string arg)
         {
-            if (IsVip(Context.User as SocketUser) && !string.IsNullOrEmpty(jSon.Settings(Context.Guild, Settings.Leave))) {
+            if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
+                if (!welcome.TryAdd("Leave", arg)) {
                     welcome["Leave"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("Leave", arg);
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -706,8 +641,8 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("dm", RunMode = RunMode.Async), RequireBotPermission(GuildPermission.KickMembers)]
-        public async Task DmSendcmd([Summary("t/f"), Remainder()]char arg)
+        [Command("dm", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task DmSendcmd([Summary("t/f")]char arg)
         {
             if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
@@ -715,11 +650,9 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
-                    welcome["DMmsg"] = arg;
-                }
-                catch {
-                    welcome.TryAdd("DMmsg", arg);
+                int dispatch = (arg.Equals('t') ? 1 : 0);
+                if (!welcome.TryAdd("DMmsg", dispatch)) {
+                    welcome["DMmsg"] = dispatch;
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -727,8 +660,28 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("prefix", RunMode = RunMode.Async), RequireBotPermission(GuildPermission.Administrator)]
-        public async Task Prefix([Summary("prefix"), Remainder()]char arg)
+        [Command("deleteinv", RunMode = RunMode.Async), RequireBotPermission(GuildPermission.ManageMessages), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
+        public async Task DeleteINV([Summary("t/f")]char arg)
+        {
+            if (IsVip(Context.User as SocketUser))
+            {
+                await Context.Message.DeleteAsync();
+                if (!arg.Equals('t') && !arg.Equals('f')) { await ReplyAsync("`t/f`"); return; }
+                if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
+                JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
+                JObject welcome = (JObject)rss["Settings"];
+                int dispatch = (arg.Equals('t') ? 1 : 0);
+                if (!welcome.TryAdd("DeleteInviteMSG", dispatch)) {
+                    welcome["DeleteInviteMSG"] = dispatch;
+                }
+                File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
+                _vMem._run();
+                await ReplyAsync($"DeleteINV set to: `{arg.ToString().Replace("t", "TRUE").Replace("f", "FALSE")}`");
+            }
+        }
+
+        [Command("prefix", RunMode = RunMode.Async), RequireUserPermissionAttribute(GuildPermission.Administrator)]
+        public async Task Prefix([Summary("prefix")]char arg)
         {
             if (IsVip(Context.User as SocketUser)) {
                 await Context.Message.DeleteAsync();
@@ -739,11 +692,8 @@ namespace Daddy.Modules
                 if (!DoesExistSettings(Context.Guild)) { CreateSettings(Context.Guild); }
                 JObject rss = JObject.Parse(File.ReadAllText($@"Settings/settings_{Context.Guild.Id}.json"));
                 JObject welcome = (JObject)rss["Settings"];
-                try {
-                    welcome["Prefix"] = arg.ToString();
-                }
-                catch {
-                    welcome.TryAdd("Prefix", arg.ToString());
+                if (!welcome.TryAdd("Prefix", arg)) {
+                    welcome["Prefix"] = arg;
                 }
                 File.WriteAllText($@"Settings/settings_{Context.Guild.Id}.json", rss.ToString());
                 _vMem._run();
@@ -751,7 +701,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("cenable", RunMode = RunMode.Async), Alias("callow"), RequireBotPermission(GuildPermission.ManageRoles)]
+        [Command("cenable", RunMode = RunMode.Async), Alias("callow"), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
         public async Task _cEnable([Summary("command")]string arg)
         {
             if (IsVip(Context.User as SocketUser)) {
@@ -770,7 +720,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("enable", RunMode = RunMode.Async), Alias("allow"), RequireBotPermission(GuildPermission.ManageRoles)]
+        [Command("enable", RunMode = RunMode.Async), Alias("allow"), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
         public async Task Enable([Summary("command")]string arg)
         {
             if (IsVip(Context.User as SocketUser)) {
@@ -790,7 +740,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("cdisable", RunMode = RunMode.Async), Alias("cforbid"), RequireBotPermission(GuildPermission.ManageRoles)]
+        [Command("cdisable", RunMode = RunMode.Async), Alias("cforbid"), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
         public async Task _cDisable([Summary("command")]string arg)
         {
             if (IsVip(Context.User as SocketUser)) {
@@ -809,7 +759,7 @@ namespace Daddy.Modules
             }
         }
 
-        [Command("disable", RunMode = RunMode.Async), Alias("forbid"), RequireBotPermission(GuildPermission.ManageRoles)]
+        [Command("disable", RunMode = RunMode.Async), Alias("forbid"), RequireUserPermissionAttribute(GuildPermission.ManageRoles)]
         public async Task Disable([Summary("command")]string arg)
         {
             if (IsVip(Context.User as SocketUser)) {
@@ -836,20 +786,24 @@ namespace Daddy.Modules
                 string[] a = arg.Split(new string[] { "->" }, StringSplitOptions.None);
                 JObject rss = null;
                 try {
-                    rss = JObject.Parse($"{File.ReadAllText($@"{a[0]}/{a[1]}_{Context.Guild.Id}.json")}");
+                    rss = JObject.Parse($"{File.ReadAllText($@"{a[0]}/{a[1]}_{(a[0].Equals("users") ? (a.Length.Equals(3) ? a[2] : Context.User.Id.ToString()) : Context.Guild.Id.ToString())}.json")}");
                 }
                 catch {
                     await ReplyAsync($"Doesn't exist!\narg0: `{a[0]}`\narg1: `{a[1]}`\narg2: `{a[2]}`\n");
                     return;
                 }
-                if (a.Length.Equals(3)) {
-                    await ReplyAsync($"```json\n{rss[a[2]]}```");
-                    return;
+                if (!a[0].Equals("users")) {
+                    if (a.Length.Equals(3)) {
+                        await ReplyAsync($"```json\n{rss[a[2]]}```");
+                    }
+                    else {
+                        foreach (var x in rss) {
+                            await ReplyAsync($"```json\n{x.Key}\n{x.Value}```");
+                        }
+                    }
                 }
                 else {
-                    foreach (var x in rss) {
-                        await ReplyAsync($"```json\n{x.Key}\n{x.Value}```");
-                    }
+                    await ReplyAsync($"```json\n{rss["info"]}```");
                 }
             }
             else {
@@ -867,9 +821,9 @@ namespace Daddy.Modules
                     args = null;
                 }
                 if (a[0].Equals("d")) {
-                    Main.Daddy _d = new Main.Daddy();
+                    Main.Program _d = new Main.Program();
                     if (a[1].Equals("r")) {
-                        await ReplyAsync($"{typeof(Main.Daddy).GetMethod(a[2]).Invoke(_d, args)}");
+                        await ReplyAsync($"{typeof(Main.Program).GetMethod(a[2]).Invoke(_d, args)}");
                     }
                     else if (a[1].Equals("e")) {
                         //typeof(Main.Daddy).GetMethod(a[2]).Invoke(_d, args);
@@ -912,7 +866,7 @@ namespace Daddy.Modules
         [Command("info", RunMode = RunMode.Async), Summary("Gives some info about server"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task Info()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Info)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Info).Result) {
                 var sw = Stopwatch.StartNew();
                 EmbedFieldBuilder field1 = new EmbedFieldBuilder()
                 {
@@ -953,13 +907,13 @@ namespace Daddy.Modules
                 EmbedAuthorBuilder author = new EmbedAuthorBuilder()
                 {
                     Name = "DaddyBot",
-                    IconUrl = Main.Daddy._client.CurrentUser.GetAvatarUrl()
+                    IconUrl = Main.Program._client.CurrentUser.GetAvatarUrl()
                 };
                 EmbedBuilder embed = new EmbedBuilder()
                 {
                     Author = author,
                     Title = $"{Context.Guild.Name}'s informations.",
-                    Description = $"Bot made by: [Pat](http://daddybot.me/)\nBot made for: [M&D](https://discord.gg/D6qd4BE)\nBot created: {Main.Daddy._client.CurrentUser.CreatedAt}",
+                    Description = $"Bot made by: [Pat](http://daddybot.me/)\nBot made for: [M&D](https://discord.gg/D6qd4BE)\nBot created: {Main.Program._client.CurrentUser.CreatedAt}",
                     Fields = new List<EmbedFieldBuilder>() { field1, field2, field3, field4, field5, field6 },
                     ThumbnailUrl = Context.Guild.IconUrl,
                     Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)))
@@ -967,15 +921,12 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
-        [Command("uinfo", RunMode = RunMode.Async), Alias("dox", "whois", "stats"), Summary("Gives some info about user"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
+        [Command("uinfo", RunMode = RunMode.Async), Alias("dox", "whois", "stats", "whomst"), Summary("Gives some info about user"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task UserInfo([Remainder()]IGuildUser user = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Info)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Info).Result) {
                 if (user == null) { user = (IGuildUser)Context.User; }
                 var sw = Stopwatch.StartNew();
                 EmbedFieldBuilder field1 = new EmbedFieldBuilder()
@@ -999,8 +950,8 @@ namespace Daddy.Modules
                 EmbedFieldBuilder field4 = new EmbedFieldBuilder()
                 {
                     IsInline = true,
-                    Name = "Game",
-                    Value = $"{(user.Game.HasValue ? user.Game.Value.ToString() : "None")}"
+                    Name = $"Activity - {(string.IsNullOrEmpty(user.Activity.Type.ToString()) ? "NONE" : $"{user.Activity.Type}")}",
+                    Value = $"{((user.Activity is Game) ? (string.IsNullOrEmpty((user.Activity as Game).Name) ? "None" : user.Activity.Name) : "N/A")}"
                 };
                 EmbedFieldBuilder field5 = new EmbedFieldBuilder()
                 {
@@ -1031,9 +982,6 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: embed.WithFooter(x => x.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("help", RunMode = RunMode.Async), Summary("A list of cmds."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
@@ -1060,7 +1008,7 @@ namespace Daddy.Modules
         [Command("avatar", RunMode = RunMode.Async), Alias("pfp"), Summary("Gets avatar."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task Avatar([Summary("User")]IUser arg = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Avatar)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Avatar).Result) {
                 var sw = Stopwatch.StartNew();
                 EmbedBuilder builder = new EmbedBuilder();
                 if (arg != null) {
@@ -1077,15 +1025,12 @@ namespace Daddy.Modules
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
                 await Context.Message.DeleteAsync();
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("channels", RunMode = RunMode.Async), Alias("channel"), Summary("Gets channel IDs."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task Channels([Summary("t/v")]string type = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Channels)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Channels).Result) {
                 var sw = Stopwatch.StartNew();
                 StringBuilder str0 = new StringBuilder();
                 StringBuilder str1 = new StringBuilder();
@@ -1118,15 +1063,12 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("roles", RunMode = RunMode.Async), Alias("role"), Summary("Gets role IDs."), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
         public async Task Roles()
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Role)) {
+            if (jSon._permWR(Context, Commands.Role).Result) {
                 var sw = Stopwatch.StartNew();
                 StringBuilder str0 = new StringBuilder();
                 StringBuilder str1 = new StringBuilder();
@@ -1153,24 +1095,21 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("perms", RunMode = RunMode.Async), Alias("permissions"), Summary("Gets perms [API]"), Ext.Ratelimit(1, 1, Ext.Measure.Minutes)]
-        public async Task Perms()
+        public async Task Perms(SocketGuildUser user = null)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Permissions)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Permissions).Result) {
                 await Context.Message.DeleteAsync();
                 var sw = Stopwatch.StartNew();
                 StringBuilder str0 = new StringBuilder();
-                GuildPermissions perms = (Context.User as SocketGuildUser).GuildPermissions;
+                GuildPermissions perms = (user ?? Context.User as SocketGuildUser).GuildPermissions; //(Context.User as SocketGuildUser).GuildPermissions;
                 perms.ToList().ForEach(x => str0.AppendLine($"{x}"));
                 EmbedFieldBuilder field0 = new EmbedFieldBuilder()
                 {
                     IsInline = true,
-                    Name = $"Permissions - {Context.User.Username}",
+                    Name = $"Permissions - {(user ?? Context.User as SocketGuildUser).Username}",
                     Value = str0.ToString()
                 };
                 EmbedBuilder builder = new EmbedBuilder()
@@ -1181,35 +1120,29 @@ namespace Daddy.Modules
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
             }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
-            }
         }
 
         [Command("random", RunMode = RunMode.Async), Summary("Random user"), Ext.Ratelimit(3, 0.5, Ext.Measure.Minutes)]
         public async Task RandomUser()
         {
             await Context.Message.DeleteAsync();
-            if (IsVip(Context.User as SocketGuildUser) && jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Random)) {
+            if (IsVip(Context.User as SocketGuildUser) && jSon._permWR(Context, BaseCommands.Commands.Random).Result) {
                 IGuildUser user = (await Context.Guild.GetUsersAsync()).Where(x => x is SocketGuildUser).ToList()[_ran.Next(((SocketGuild)Context.Guild).MemberCount)];
                 await ReplyAsync($"{user.Mention}");
-            }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
             }
         }
 
         [Command("disc", RunMode = RunMode.Async), Summary("Discriminator search"), Ext.Ratelimit(1, 0.1, Ext.Measure.Minutes)]
-        public async Task DiscriminatorSearch()
+        public async Task DiscriminatorSearch(ulong disc = 0)
         {
             await Context.Message.DeleteAsync();
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Discriminator)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Discriminator).Result) {
                 bool y = true;
                 StringBuilder sb = new StringBuilder();
-                SocketGuildUser me = (Context.User as SocketGuildUser);
+                var user = (disc.Equals(0) ? Context.User : (await Context.Guild.GetUserAsync(disc)));
                 (await Context.Client.GetGuildsAsync()).ToList().ForEach(async g => {
                     (await g.GetUsersAsync()).Where(x => x is SocketGuildUser).ToList().ForEach(z => {
-                        if (z.DiscriminatorValue.Equals(me.DiscriminatorValue) && !z.Username.Equals(me.Username)) {
+                        if (z.DiscriminatorValue.Equals(user.DiscriminatorValue)) {
                             y = false;
                             if (!sb.ToString().Contains(z.Username)) {
                                 sb.AppendLine($"{z.Username} - {z.DiscriminatorValue}");
@@ -1218,21 +1151,21 @@ namespace Daddy.Modules
                     });
                 });
                 if (!y) {
-                    await ReplyAsync(sb.ToString());
+                    sb.ToString().SplitBy2(1999).ToList().ForEach(async x =>
+                    {
+                        await ReplyAsync(x);
+                    });
                 }
                 else {
                     await ReplyAsync($"`No users found!`");
                 }
-            }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
             }
         }
 
         [Command("top", RunMode = RunMode.Async), Alias("users"), Summary("Gets first users"), Ext.Ratelimit(1, 5, Ext.Measure.Minutes)]
         public async Task TopUsers([Summary("Number")]int users2find = 10)
         {
-            if (jSon.CheckPermChn(Context.Guild, Context.Channel.Id, Commands.Top)) {
+            if (jSon._permWR(Context, BaseCommands.Commands.Top).Result) {
                 await Context.Message.DeleteAsync();
                 if (users2find > 25 || users2find > (Context.Guild as SocketGuild).MemberCount || users2find <= 0) {
                     await ReplyAsync("Whoa, slow down there buddy!");
@@ -1242,8 +1175,8 @@ namespace Daddy.Modules
                 StringBuilder str0 = new StringBuilder();
                 StringBuilder str1 = new StringBuilder();
                 IEnumerable<IGuildUser> users = (await Context.Guild.GetUsersAsync()).Where(x => x is SocketGuildUser).ToList().OrderBy(x => x.JoinedAt).Take(users2find);
-                users.ToList().ForEach(x => str0.Append($"{x.Username}\n"));
-                users.ToList().ForEach(x => str1.Append($"{x.JoinedAt}\n"));
+                users.ToList().ForEach(x => str0.AppendLine($"{x.Username}"));
+                users.ToList().ForEach(x => str1.AppendLine($"{x.JoinedAt}"));
                 EmbedFieldBuilder field0 = new EmbedFieldBuilder()
                 {
                     IsInline = true,
@@ -1263,9 +1196,6 @@ namespace Daddy.Modules
                 }.WithCurrentTimestamp();
                 sw.Stop();
                 await ReplyAsync(string.Empty, embed: builder.WithFooter(y => y.WithText($"{sw.ElapsedMilliseconds}ms")).Build());
-            }
-            else {
-                await ReplyAsync($"Admin removed this command [Channel:<#{Context.Channel.Id}>]");
             }
         }
 
@@ -1317,7 +1247,7 @@ namespace Daddy.Modules
             if (methods) withType = true;
             var sw = Stopwatch.StartNew();
             //var prog = _map.Get<Main.Daddy>();
-            var prog2 = new Main.Daddy();
+            var prog2 = new Main.Program();
             Color color;
             var cts = new CancellationTokenSource();
             cts.CancelAfter(10_000);
@@ -1326,11 +1256,11 @@ namespace Daddy.Modules
             source.OnNext(new Ext.FieldValue { Code = "cs", Content = code, Title = "Input" });
             var scriptOptions = _types.Aggregate(ScriptOptions.Default.AddReferences(Assembly.GetEntryAssembly()), (acc, x) => acc.AddReferences(AssemblyMetadata.CreateFromFile(x.GetTypeInfo().Assembly.Location).GetReference()))
                 .AddImports(
-                    "Daddy", "System.Linq", "System", "Daddy.Main", "Daddy.Database",
+                    "Daddy", "System.Linq", "System", "Daddy.Main", "Daddy.Database", "Daddy.Modules",
                     "System.IO", "System.Threading", "System.Threading.Tasks",
                     "System.Diagnostics", "System.Collections.Generic",
                     "Discord", "Discord.Commands", "Discord.WebSocket", "Discord.Audio",
-                    "Discord.Rest", "Discord.Rpc"
+                    "Discord.Rest"
                 );
             var globals = new Globals { client = Context.Client, context = Context as SocketCommandContext, bot = prog2, _types = _types };
             object result = null;
@@ -1351,13 +1281,13 @@ namespace Daddy.Modules
                 else {
                     vizual.Append(Ext.TypeInspector.VisualizeValue(result, withType, findMember: methodName));
                 }
-                await Main.Daddy.Log(vizual.ToString());
+                await Main.Program.Log(vizual.ToString());
                 color = Success;
                 success = true;
                 //await Context.Message.DeleteAsync();
             }
             catch (CompilationErrorException e) {
-                await Main.Daddy.Log("Error", exception: e);
+                await Main.Program.Log("Error", exception: e);
 
                 foreach (var item in e.Diagnostics) {
                     if (withType) {
@@ -1373,22 +1303,22 @@ namespace Daddy.Modules
                 color = Error;
             }
             catch (OperationCanceledException e) {
-                await Main.Daddy.Log("Error", exception: e);
+                await Main.Program.Log("Error", exception: e);
                 source.OnNext(new Ext.FieldValue { Content = e.Message, Code = "", Title = "Timeout" });
                 color = Warning;
             }
             catch (JsonSerializationException e) {
-                await Main.Daddy.Log("Error", exception: e);
+                await Main.Program.Log("Error", exception: e);
                 source.OnNext(new Ext.FieldValue { Content = e.Message, Code = "", Title = "Error" });
                 color = Error;
             }
             catch (TargetInvocationException e) {
-                await Main.Daddy.Log("Error", exception: e);
+                await Main.Program.Log("Error", exception: e);
                 source.OnNext(new Ext.FieldValue { Content = e.InnerException.Message, Code = "", Title = "Error" });
                 color = Error;
             }
             catch (Exception e) {
-                await Main.Daddy.Log("Error", exception: e);
+                await Main.Program.Log("Error", exception: e);
                 source.OnNext(new Ext.FieldValue { Content = e.Message, Code = "", Title = "Error" });
                 color = Error;
             }
@@ -1430,8 +1360,8 @@ namespace Daddy.Modules
                             // Send
 
                             source.OnCompleted();
-                            var res = (withType) ? await ReplyAsync(Format.Code(Ext.Extensions.StripBlock($"{header}\n{part}"))) : await ReplyAsync("", false, (await embedbuilder).WithColor(color));
-                            await Main.Daddy.Log(res.Content);
+                            var res = (withType) ? await ReplyAsync(Format.Code(Ext.Extensions.StripBlock($"{header}\n{part}"))) : await ReplyAsync("", false, (await embedbuilder).WithColor(color).Build());
+                            await Main.Program.Log(res.Content);
                             source = new Subject<Ext.FieldValue>();
                             embedbuilder = Ext.Extensions.BuildBotAnswer(source);
                             continuation = true;
@@ -1445,7 +1375,7 @@ namespace Daddy.Modules
                 else {
                     if (withType) {
                         source.OnCompleted();
-                        await ReplyAsync("", embed: (await embedbuilder).WithColor(color));
+                        await ReplyAsync("", embed: (await embedbuilder).WithColor(color).Build());
                         return;
                     }
                 }
@@ -1456,29 +1386,29 @@ namespace Daddy.Modules
 
                 source.OnCompleted();
                 sw.Stop();
-                var reply = (withType) ? await ReplyAsync(Format.Code(lastpart)) : await ReplyAsync("", false, (await embedbuilder).WithColor(color).WithFooter(x => x.WithText($"In {sw.ElapsedMilliseconds}ms")));
-                await Main.Daddy.Log(reply.Content);
+                var reply = (withType) ? await ReplyAsync(Format.Code(lastpart)) : await ReplyAsync("", false, (await embedbuilder).WithColor(color).WithFooter(x => x.WithText($"In {sw.ElapsedMilliseconds}ms")).Build());
+                await Main.Program.Log(reply.Content);
             }
             catch (Exception e) {
-                await Main.Daddy.Log("Error", exception: e);
-                source = new Subject<Ext.FieldValue>();
+                await Main.Program.Log("Error", exception: e);
+                source = new Subject<FieldValue>();
                 embedbuilder = Ext.Extensions.BuildBotAnswer(source);
                 source.OnNext(new Ext.FieldValue { Content = e.Message, Code = "", Title = "Error" });
                 source.OnCompleted();
                 color = Error;
-                await ReplyAsync("", false, (await embedbuilder).WithColor(color).WithFooter(x => x.WithText($"In {sw.ElapsedMilliseconds}ms")));
+                await ReplyAsync("", false, (await embedbuilder).WithColor(color).WithFooter(x => x.WithText($"In {sw.ElapsedMilliseconds}ms")).Build());
             }
         }
 
-        public static async Task SendReasonEmbedToUserDM(SocketUser user, IGuild guild, string reason, Commands r)
+        public static async Task SendReasonEmbedToUserDM(SocketUser user, IGuild guild, string reason, Commands r, int min = 0)
         {
             JSON jSon = new JSON();
-            if ((Convert.ToInt32(Ext._vMem._vMemory[guild.Id][Settings.DMmsg]).Equals(116))) {
+            if ((Convert.ToBoolean(_vMem._vMemory[guild.Id][Settings.DMmsg]))) {
                 EmbedBuilder builder = new EmbedBuilder();
                 var sw = Stopwatch.StartNew();
                 switch (r) {
                     case Commands.Mute:
-                        builder.Description = $"**You are Muted from {guild.Name}!**{(string.IsNullOrEmpty(reason) ? string.Empty : $"\n**Reason: {reason}**")}";
+                        builder.Description = $"**You are Muted from {guild.Name}!**{(string.IsNullOrEmpty(reason) ? string.Empty : $"\n**Reason: {reason}**")}{(min.Equals(0) ? string.Empty : $"\n**Minutes: {min}**")}";
                         break;
                     case Commands.Kick:
                         builder.Description = $"**You are Kicked from {guild.Name}!**{(string.IsNullOrEmpty(reason) ? string.Empty : $"\n**Reason: {reason}**")}";
@@ -1548,6 +1478,17 @@ namespace Daddy.Modules
             File.WriteAllText($@"Settings/settings_{arg.Id}.json", JsonConvert.SerializeObject(new Dictionary<string, Dictionary<Settings, object>>
             {
                 { "Settings", _bc.inWelcome }
+            }, Formatting.Indented));
+        }
+
+        public static bool DoesExistUser(ulong arg) => File.Exists($@"users/user_{arg}.json");
+
+        public static void CreateUser(ulong arg)
+        {
+            BaseCommands _bc = new BaseCommands();
+            File.WriteAllText($@"users/user_{arg}.json", JsonConvert.SerializeObject(new Dictionary<string, Dictionary<User, object>>
+            {
+                { "info", _bc.inUser }
             }, Formatting.Indented));
         }
 
@@ -1624,7 +1565,9 @@ namespace Daddy.Modules
             Permissions = 34,
             Discriminator = 35,
             Role = 36,
-            Gamble = 37
+            Gamble = 37,
+            Lick = 38,
+            Cuck = 39
         }
 
         public enum Settings
@@ -1639,7 +1582,27 @@ namespace Daddy.Modules
             DMmsg = 7,
             LogCHN = 8,
             Premium = 9,
-            WelcomeCHN = 10
+            WelcomeCHN = 10,
+            DeleteInviteMSG = 11
+        }
+
+        public enum User
+        {
+            Shekels = 0,
+            Bank = 1,
+            Storage = 2
+        }
+
+        public enum Store
+        {
+            Special_wish = 30000,
+            VIP_1mo = 25000,
+            MotW = 20000,
+            Promotion = 12500,
+            Random_reward = 7500,
+            Storage = 7000,
+            Misc_role = 3750,
+            Nickname_change = 750
         }
     }
 
