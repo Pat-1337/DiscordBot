@@ -17,12 +17,15 @@ using Discord.Audio;
 using Daddy.Modules.Audio;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
+using DiscordBotsList;
+using DiscordBotsList.Api;
+using static Daddy.Modules.BaseCommands;
 
 namespace Daddy.Main
 {
-    public class Daddy
+    public class Program
     {
-        static void Main(string[] args) => new Daddy().Start(args).GetAwaiter().GetResult();
+        static void Main(string[] args) => new Program().Start(args).GetAwaiter().GetResult();
 
         public static CommandService _commands;
         public static DiscordSocketClient _client;
@@ -31,11 +34,13 @@ namespace Daddy.Main
         private static AudioService _audios;
         private IServiceProvider _services;
         public static Random _ran = new Random();
-        public static Daddy _instance = new Daddy();
+        public static Program _instance = new Program();
         JSON jSon = new JSON();
         Ext._vMem _vMem = new Ext._vMem();
         public static bool Ready = false;
         public static readonly string token = JSON.GetToken();
+        public static DiscordBotListApi DblApi = new DiscordBotListApi();
+        public static AuthDiscordBotListApi DblApiBot;
         public Ext.Ext ObjectMemory { get; private set; }
 
         DateTime startTime = DateTime.Now;
@@ -63,7 +68,7 @@ namespace Daddy.Main
             {
                 LogLevel = LogSeverity.Info,
                 MessageCacheSize = 50,
-                //AlwaysDownloadUsers = true
+                AlwaysDownloadUsers = true
                 //TotalShards = 2
             });
             _services = new ServiceCollection().AddSingleton(_client).AddSingleton(_commands).AddSingleton<AudioService>().BuildServiceProvider();
@@ -94,11 +99,20 @@ namespace Daddy.Main
         private async Task HandleCommand(SocketMessage arg)
         {
             var message = arg as SocketUserMessage;
-            if (message == null || arg.Author.IsBot) {
+            if (arg.Author.IsBot || message == null)
+            {
+                if (message.Channel.Id.Equals(424510923806343178)) {
+                    ulong.TryParse(message.Content, out ulong userid);
+                    Modules.Currency currency = new Modules.Currency();
+                    currency.Add(userid, 250, out int val);
+                    IDMChannel x = await (_client.GetUser(userid)).GetOrCreateDMChannelAsync();
+                    await x.SendMessageAsync($"`Thanks for voting!`\n`Shekels:` {val}{Modules.Currency.shekel}", false);
+                    return;
+                }
                 return;
             }
             int argPos = 0;
-            if (message.Content.ToLower().Contains("https://discord.gg")) {
+            if ((message.Content.ToLower().Contains("https://discord.gg") && (message.Content.ToLower().Contains("https://discord.me/"))) && Convert.ToBoolean(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.DeleteInviteMSG])) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Please don't send invite links!");
             }
@@ -109,7 +123,7 @@ namespace Daddy.Main
             {
                 await message.Channel.SendMessageAsync("no, ur mum lul");
             }
-            else if (!Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.CharSpam]).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.CharSpam])) && !Modules.BaseCommands.IsVip(message.Author)) {
+            else if (!Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam]).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam])) && !IsVip(message.Author)) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }
@@ -124,13 +138,12 @@ namespace Daddy.Main
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }*/
-            else if (!(message.HasCharPrefix(Convert.ToChar(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Modules.BaseCommands.Settings.Prefix]), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) {
+            else if (!(message.HasCharPrefix(Convert.ToChar(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.Prefix]), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) {
                 return;
             }
             var context = new CommandContext(_client, message);
             var result = await _commands.ExecuteAsync(context, argPos, _services);
-            if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-            {
+            if (!result.IsSuccess && result.Error != CommandError.UnknownCommand) {
                 await context.Channel.SendMessageAsync(result.ErrorReason);
             }
         }
@@ -151,6 +164,7 @@ namespace Daddy.Main
             _client.GuildMemberUpdated  += User_Updated;
             _client.GuildUpdated        += Guild_Updated;
             _client.MessageDeleted      += Message_Deleted;
+            _client.ReactionAdded       += _client_ReactionAdded;
             //_client.GuildAvailable      += _client_GuildAvailable;
         }
 
@@ -165,6 +179,8 @@ namespace Daddy.Main
             //await Start();
             _vMem.Start();
             Ext._vMem.instance._run();
+            Modules.Currency.SetEmoji();
+            DblApiBot = new AuthDiscordBotListApi(_client.CurrentUser.Id, JSON.Getdbo());
             Ready = true;
             await Task.CompletedTask;
         }
@@ -172,10 +188,10 @@ namespace Daddy.Main
         private async Task Start()
         {
             _vMem.Start();
-            _client.Guilds.ToList().ForEach(x =>
+            /*_client.Guilds.ToList().ForEach(x =>
             {
-                var token = (ulong)(long)Ext._vMem._vMemory[x.Id][Modules.BaseCommands.Settings.Premium];
-            });
+                //var token = (ulong)(long)Ext._vMem._vMemory[x.Id][Modules.BaseCommands.Settings.Premium];
+            });*/
             await Task.CompletedTask;
         }
 
@@ -201,13 +217,13 @@ namespace Daddy.Main
 
         private async Task Client_UserBanned(SocketUser arg, SocketGuild sg)
         {
-            Modules.BaseCommands.noSend.Add(arg.Id);
+            noSend.Add(arg.Id);
             await Task.CompletedTask;
         }
 
         private async Task Client_UserUnbanned(SocketUser arg, SocketGuild sg)
         {
-            Modules.BaseCommands.noSend.RemoveAll(x => x.Equals(arg.Id));
+            noSend.RemoveAll(x => x.Equals(arg.Id));
             await Task.CompletedTask;
         }
 
@@ -286,10 +302,75 @@ namespace Daddy.Main
 
         private async Task<bool> Guild_Ready(SocketGuild arg) => await Task.FromResult(true);
 
-        private async Task Pass(object n)
+        private async Task _client_ReactionAdded(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
-            await Console.Out.WriteLineAsync($"Pass - {n}!");
+            if (!reaction.UserId.Equals(_client.CurrentUser.Id) && (channel as IGuildChannel).GuildId.Equals(215601994507878402))
+            {
+                for (int x = 1; x < Enum.GetValues(typeof(Store)).Length + 1; x++) {
+                    if (new Emoji($"{x}\u20e3").Name.Equals(reaction.Emote.Name))
+                    {
+                        Modules.Currency currency = new Modules.Currency();
+                        int amount = currency.Amount(reaction.UserId);
+                        IDMChannel y = await _client.GetUser(170695871510347778).GetOrCreateDMChannelAsync();
+                        switch (x)
+                        {
+                            case 1:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(0)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(0), out int val0);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(0).ToString()}", false);
+                                }
+                                return;
+                            case 2:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(1)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(1), out int val1);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(1).ToString()}", false);
+                                }
+                                return;
+                            case 3:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(2)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(2), out int val2);
+                                    currency.Add_storage(reaction.UserId);
+                                    await channel.SendMessageAsync($"`{reaction.User.Value.Username} bought 5k slot expansion`");
+                                }
+                                return;
+                            case 4:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(3)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(3), out int val3);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(3).ToString()}", false);
+                                }
+                                return;
+                            case 5:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(4)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(4), out int val4);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(4).ToString()}", false);
+                                }
+                                return;
+                            case 6:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(5)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(5), out int val5);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(5).ToString()}", false);
+                                }
+                                return;
+                            case 7:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(6)) {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(6), out int val6);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(6).ToString()}", false);
+                                }
+                                return;
+                            case 8:
+                                if (amount >= (int)Enum.GetValues(typeof(Store)).GetValue(7))
+                                {
+                                    currency.Subtract(reaction.UserId, (int)Enum.GetValues(typeof(Store)).GetValue(7), out int val6);
+                                    await y.SendMessageAsync($"{reaction.User.Value} - {Enum.GetValues(typeof(Store)).GetValue(7).ToString()}", false);
+                                }
+                                return;
+                        }
+                    }
+                }
+            }
         }
+
+        private async Task Pass(object n) => await Console.Out.WriteLineAsync($"Pass - {n}!");
 
         public async Task SendJoinMSG(SocketGuildUser user = null, SocketGuild guild = null, JoinSeverity j = JoinSeverity.Null)
         {
@@ -297,38 +378,48 @@ namespace Daddy.Main
                 return;
             }
             EmbedBuilder builder = new EmbedBuilder();
-            switch (j) {
+            switch (j)
+            {
                 case JoinSeverity.UserJoined:
                     if (user.IsBot) {
                         return;
                     }
-                    if (!(Convert.ToInt64(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.JoinRole])).Equals(0)) {
-                        try {
+                    if (!(Convert.ToInt64(Ext._vMem._vMemory[user.Guild.Id][Settings.JoinRole])).Equals(0))
+                    {
+                        try
+                        {
                             await user.AddRoleAsync(user.Guild.GetRole(Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.JoinRole])) as IRole);
                         }
-                        catch (Exception e) {
+                        catch (Exception e)
+                        {
                             await Log($"AddRoleAsync - {user.Guild.Id}", exception: e);
                         }
                     }
-                    if (jSon.CheckPermChn(user.Guild, user.Guild.TextChannels.FirstOrDefault().Id, Modules.BaseCommands.Commands.Welcome)) {
-                        builder.Description = Modules.BaseCommands.EditMessage(Convert.ToString(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.Welcome]), user as IGuildUser, null, user.Guild as IGuild);
+                    if (jSon.CheckPermChn(user.Guild, user.Guild.TextChannels.FirstOrDefault().Id, Commands.Welcome))
+                    {
+                        builder.Description = EditMessage(Convert.ToString(Ext._vMem._vMemory[user.Guild.Id][Settings.Welcome]), user as IGuildUser, null, user.Guild as IGuild);
                         builder.WithThumbnailUrl(user.GetAvatarUrl(ImageFormat.Auto, (ushort)128));
                         builder.WithAuthor(new EmbedAuthorBuilder() { IconUrl = user.GetAvatarUrl(ImageFormat.Auto, (ushort)128), Name = $"{user.Username} joined {user.Guild.Name}!" });
                     }
-                    else {
+                    else
+                    {
                         return;
                     }
                     break;
                 case JoinSeverity.UserLeft:
-                    if (!Modules.BaseCommands.noSend.Contains(user.Id)) {
-                        if (jSon.CheckPermChn((user.Guild as IGuild), user.Guild.TextChannels.FirstOrDefault().Id, Modules.BaseCommands.Commands.Leave)) {
-                            builder.Description = Modules.BaseCommands.EditMessage(Convert.ToString(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.Leave]), user as IGuildUser, null, user.Guild as IGuild);
+                    if (!noSend.Contains(user.Id))
+                    {
+                        if (jSon.CheckPermChn((user.Guild as IGuild), user.Guild.TextChannels.FirstOrDefault().Id, Commands.Leave))
+                        {
+                            builder.Description = EditMessage(Convert.ToString(Ext._vMem._vMemory[user.Guild.Id][Settings.Leave]), user as IGuildUser, null, user.Guild as IGuild);
                         }
-                        else {
+                        else
+                        {
                             return;
                         }
                     }
-                    else {
+                    else
+                    {
                         return;
                     }
                     break;
@@ -348,13 +439,21 @@ namespace Daddy.Main
             }
             builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
             //await (user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
-            if (Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.WelcomeCHN]).Equals(0)) {
+            if (Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).Equals(0)) {
                 Modules.BaseCommands _bc = new Modules.BaseCommands();
-                await _bc.SetWelcome_main(user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel);
+                await _bc.SetWelcome_main(user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as ITextChannel);
             }
-            else
+            else if (jSon.CheckPermChn(user.Guild, user.Guild.DefaultChannel.Id, Commands.Welcome) && user.Guild.CurrentUser.GuildPermissions.Administrator)
             {
-                await (_client.GetChannel((ulong)(long)Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.WelcomeCHN]) as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
+                try
+                {
+                    await user.Guild.GetTextChannel((ulong)(long)Ext._vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
+                }
+                catch (Exception e)
+                {
+                    await Log($"Send welcome / leave message! - {user.Guild.Id} - {user.Guild.Name}", exception: e);
+                }
+                //await (_client.GetChannel((ulong)(long)Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.WelcomeCHN]) as ITextChannel).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
             }
         }
 
@@ -441,15 +540,14 @@ namespace Daddy.Main
         {
             await Task.Delay(2250);
             Modules.BaseCommands _bc = new Modules.BaseCommands();
-            if (!Modules.BaseCommands.DoesExistJson(arg as IGuild)) {
-                Modules.BaseCommands.CreateJson(arg as IGuild);
+            if (!DoesExistSettings(arg as IGuild)) {
+                CreateSettings(arg as IGuild);
             }
-            if (!Modules.BaseCommands.DoesExistSettings(arg as IGuild)) {
-                Modules.BaseCommands.CreateSettings(arg as IGuild);
+            if (!DoesExistJson(arg as IGuild)) {
+                CreateJson(arg as IGuild);
             }
-            if (((ulong)(long)Ext._vMem._vMemory[arg.Id][Modules.BaseCommands.Settings.WelcomeCHN]).Equals(0)) {
-                await _bc.SetWelcome_main(arg.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel);
-            }
+            await Task.Delay(2250);
+            await _bc.SetWelcome_main(arg.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel);
             EmbedBuilder embed = new EmbedBuilder()
             {
                 Author = new EmbedAuthorBuilder()
