@@ -4,7 +4,7 @@
 
 DaddyBot is Discord administrative, interactive and fun bot!  
 Library: Discord.NET [C#]  
-Version: 1.0.2.  
+Version: 2.0.0.-beta 
 .NET Core version: 2.0.0.  
 
 # Features
@@ -14,10 +14,11 @@ Version: 1.0.2.
   - Discriminator search
   - Emote commands
   - Info commands
+  - Advanced logging
+  - NSFW module
+  - Custom currency
   - And more to come!
 
 ### WIP
-  - NSFW module
   - Strong anti-spam
-  - Advanced logging
   - Joinable ranks
