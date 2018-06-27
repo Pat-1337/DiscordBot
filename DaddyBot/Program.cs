@@ -19,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using DiscordBotsList;
 using DiscordBotsList.Api;
+using Daddy.Ext;
 using static Daddy.Modules.BaseCommands;
 
 namespace Daddy.Main
@@ -104,26 +105,19 @@ namespace Daddy.Main
                 if (message.Channel.Id.Equals(424510923806343178)) {
                     ulong.TryParse(message.Content, out ulong userid);
                     Modules.Currency currency = new Modules.Currency();
-                    currency.Add(userid, 250, out int val);
+                    currency.Add(userid, 150, out int val);
                     IDMChannel x = await (_client.GetUser(userid)).GetOrCreateDMChannelAsync();
-                    await x.SendMessageAsync($"`Thanks for voting!`\n`Shekels:` {val}{Modules.Currency.shekel}", false);
+                    await x.SendMessageAsync($"`Thanks for voting!`\n`Shekels:` {val}{Modules.Currency.shekel}");
                     return;
                 }
                 return;
             }
             int argPos = 0;
-            if ((message.Content.ToLower().Contains("https://discord.gg") && (message.Content.ToLower().Contains("https://discord.me/"))) && Convert.ToBoolean(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.DeleteInviteMSG])) {
+            if (((message.Content.ToLower().Contains("discord.gg") || (message.Content.ToLower().Contains("discord.me"))) && !IsVip(message.Author)) && Convert.ToBoolean(_vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.DeleteInviteMSG])) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Please don't send invite links!");
             }
-            else if (message.Content.ToLower().Contains("ur mom gay") || message.Content.ToLower().Contains("ur mum gay") || message.Content.ToLower().Contains("ure mom gay")) {
-                await message.Channel.SendMessageAsync("no u");
-            }
-            else if (message.Content.ToLower().Contains("no u"))
-            {
-                await message.Channel.SendMessageAsync("no, ur mum lul");
-            }
-            else if (!Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam]).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam])) && !IsVip(message.Author)) {
+            else if (!Convert.ToInt32(_vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam]).Equals(0) && HasConsecutiveChars(message.Content, Convert.ToInt32(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.CharSpam])) && !IsVip(message.Author)) {
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }
@@ -138,7 +132,7 @@ namespace Daddy.Main
                 await message.DeleteAsync();
                 await message.Channel.SendMessageAsync($"{message.Author.Mention} Don't type nonsense!");
             }*/
-            else if (!(message.HasCharPrefix(Convert.ToChar(Ext._vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.Prefix]), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) {
+            else if (!(message.HasCharPrefix(Convert.ToChar(_vMem._vMemory[(message.Channel as SocketGuildChannel).Guild.Id][Settings.Prefix]), ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) {
                 return;
             }
             var context = new CommandContext(_client, message);
@@ -276,7 +270,7 @@ namespace Daddy.Main
         private async Task Message_Deleted(Cacheable<IMessage, ulong> arg1, ISocketMessageChannel arg2)
         {
             await arg1.GetOrDownloadAsync();
-            if (arg1.Value.Attachments.Count.Equals(0)) {
+            if (arg1.Value.Attachments.Count.Equals(0) && !((ulong)(long)Ext._vMem._vMemory[(arg2 as IGuildChannel).GuildId][Settings.LogCHN]).Equals(arg1.Id)) {
                 await LogCHN((arg2 as SocketGuildChannel).Guild, $"Deleted message: **{arg1.Value.Author}** - **{arg1.Value.Author.Id}**",
                     $"**Message ID:** {arg1.Id}"
                     + $"\n**Channel:** <#{arg1.Value.Channel.Id}>"
@@ -286,8 +280,8 @@ namespace Daddy.Main
 
         public async Task LogCHN(IGuild guild, string message, string message2 = null)
         {
-            if (!Ext._vMem._vMemory[guild.Id][Modules.BaseCommands.Settings.LogCHN].Equals(0)) {
-                await (_client.GetChannel((ulong)(long)Ext._vMem._vMemory[guild.Id][Modules.BaseCommands.Settings.LogCHN]) as IMessageChannel).SendMessageAsync($"`[{DateTime.Now}]` **[** *{message}* **]**" + (string.IsNullOrEmpty(message) ? string.Empty : $"\n{message2}"));
+            if (!_vMem._vMemory[guild.Id][Settings.LogCHN].Equals(0)) {
+                await (_client.GetChannel((ulong)(long)Ext._vMem._vMemory[guild.Id][Settings.LogCHN]) as IMessageChannel).SendMessageAsync($"`[{DateTime.Now}]` **[** *{message}* **]**" + (string.IsNullOrEmpty(message) ? string.Empty : $"\n{message2}"));
             }
         }
 
@@ -386,12 +380,10 @@ namespace Daddy.Main
                     }
                     if (!(Convert.ToInt64(Ext._vMem._vMemory[user.Guild.Id][Settings.JoinRole])).Equals(0))
                     {
-                        try
-                        {
-                            await user.AddRoleAsync(user.Guild.GetRole(Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Modules.BaseCommands.Settings.JoinRole])) as IRole);
+                        try {
+                            await user.AddRoleAsync(user.Guild.GetRole(Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Settings.JoinRole])) as IRole);
                         }
-                        catch (Exception e)
-                        {
+                        catch (Exception e) {
                             await Log($"AddRoleAsync - {user.Guild.Id}", exception: e);
                         }
                     }
@@ -437,9 +429,9 @@ namespace Daddy.Main
                     builder.Description = $"**?NULL**";
                     break;
             }
-            builder.Color = new Color((byte)(_ran.Next(255)), (byte)(_ran.Next(255)), (byte)(_ran.Next(255)));
+            builder.Color = user.Roles.MaxBy(x => x.Position).Color;
             //await (user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
-            if (Convert.ToUInt64(Ext._vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).Equals(0)) {
+            if (Convert.ToUInt64(_vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).Equals(0)) {
                 Modules.BaseCommands _bc = new Modules.BaseCommands();
                 await _bc.SetWelcome_main(user.Guild.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as ITextChannel);
             }
@@ -447,7 +439,7 @@ namespace Daddy.Main
             {
                 try
                 {
-                    await user.Guild.GetTextChannel((ulong)(long)Ext._vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
+                    await user.Guild.GetTextChannel((ulong)(long)_vMem._vMemory[user.Guild.Id][Settings.WelcomeCHN]).SendMessageAsync(string.Empty, false, embed: builder.WithCurrentTimestamp().Build());
                 }
                 catch (Exception e)
                 {
@@ -538,7 +530,7 @@ namespace Daddy.Main
 
         public async Task SendWelcomeMsg(SocketGuild arg)
         {
-            await Task.Delay(2250);
+            await Task.Delay(350);
             Modules.BaseCommands _bc = new Modules.BaseCommands();
             if (!DoesExistSettings(arg as IGuild)) {
                 CreateSettings(arg as IGuild);
@@ -546,7 +538,7 @@ namespace Daddy.Main
             if (!DoesExistJson(arg as IGuild)) {
                 CreateJson(arg as IGuild);
             }
-            await Task.Delay(2250);
+            await Task.Delay(150);
             await _bc.SetWelcome_main(arg.TextChannels.OrderBy(c => c.Id).FirstOrDefault() as IMessageChannel);
             EmbedBuilder embed = new EmbedBuilder()
             {
