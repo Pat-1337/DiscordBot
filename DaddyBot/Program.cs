@@ -22,6 +22,8 @@ using DiscordBotsList.Api;
 using Daddy.Ext;
 using static Daddy.Modules.BaseCommands;
 
+//dev version
+
 namespace Daddy.Main
 {
     public class Program
